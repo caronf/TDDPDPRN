@@ -15,8 +15,7 @@ public class RouteStart extends RouteStop {
 
     @Override
     public double getTimeWindowUpperBound() {
-        // This should not cause any lateness since the arrival time is 0
-        return 0.0;
+        return Double.MAX_VALUE;
     }
 
     @Override

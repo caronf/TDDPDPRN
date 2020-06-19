@@ -22,7 +22,7 @@ public class Solution {
         }
     }
 
-    public void insertRequests1(Iterable<Request> requests) {
+    public void insertRequestsAnyOrder(Iterable<Request> requests) {
         for (Request request : requests) {
             double bestCostIncrease = Double.MAX_VALUE;
             Route bestRoute = null;
@@ -49,31 +49,7 @@ public class Solution {
         }
     }
 
-    public void insertRequests2(Iterable<Request> requests) {
-        for (Request request : requests) {
-            double bestCostIncrease = Double.MAX_VALUE;
-            Route bestRoute = null;
-            int bestRouteIndex = -1;
-
-            for (int i = 0; i < routes.size(); ++i) {
-                Route newRoute = routes.get(i).getRouteAfterInsertion(request);
-                double costIncrease = newRoute.getCost() - routes.get(i).getCost();
-                if (costIncrease < bestCostIncrease) {
-                    bestCostIncrease = costIncrease;
-                    bestRoute = newRoute;
-                    bestRouteIndex = i;
-                }
-            }
-
-            assert bestRoute != null;
-            travelTime += bestRoute.getTravelTime() - routes.get(bestRouteIndex).getTravelTime();
-            lateness += bestRoute.getLateness() - routes.get(bestRouteIndex).getLateness();
-            routes.set(bestRouteIndex, bestRoute);
-            cost += bestCostIncrease;
-        }
-    }
-
-    public void insertRequests3(Collection<Request> requests) {
+    public void insertRequestsBestFirst(Collection<Request> requests) {
         ArrayList<Request> requestsToInsert = new ArrayList<>(requests);
         ArrayList<ArrayList<Double>> costIncreaseMatrix = new ArrayList<>(requests.size());
         ArrayList<ArrayList<Route>> newRoutesMatrix = new ArrayList<>(requests.size());
