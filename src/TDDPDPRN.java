@@ -33,19 +33,19 @@ public class TDDPDPRN {
                             inputDataReadTime += (System.nanoTime() - time) / 1000000000.0;
 
                             time = System.nanoTime();
-                            ArrivalTimeCalculator[][] arrivalTimeCalculators =
+                            ArrivalTimeFunction[][] arrivalTimeFunctions =
                                     DominantShortestPath.getDominantShortestPaths(inputData);
                             preprocessingTime += (System.nanoTime() - time) / 1000000000.0;
 
                             time = System.nanoTime();
-                            Solution solutionAnyOrder = new Solution(inputData.nbVehicles, arrivalTimeCalculators,
+                            Solution solutionAnyOrder = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
                                     inputData.depotTimeWindowUpperBound, latenessWeight);
                             solutionAnyOrder.insertRequestsAnyOrder(inputData.requests);
                             anyOrderTime += (System.nanoTime() - time) / 1000000000.0;
                             anyOrderCost += solutionAnyOrder.getCost();
 
                             time = System.nanoTime();
-                            Solution solutionBestFirst = new Solution(inputData.nbVehicles, arrivalTimeCalculators,
+                            Solution solutionBestFirst = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
                                     inputData.depotTimeWindowUpperBound, latenessWeight);
                             solutionBestFirst.insertRequestsBestFirst(inputData.requests);
                             bestFirstTime += (System.nanoTime() - time) / 1000000000.0;

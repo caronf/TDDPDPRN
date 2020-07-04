@@ -2,14 +2,14 @@ import java.util.ArrayList;
 
 public class Route {
     private final ArrayList<RouteStop> routeStops;
-    private final ArrivalTimeCalculator[][] arrivalTimeCalculators;
+    private final ArrivalTimeFunction[][] arrivalTimeFunctions;
     private final double latenessWeight;
     private double travelTime;
     private double lateness;
     private int newRequestPickupIndex;
     private int newRequestDeliveryIndex;
 
-    public Route(ArrivalTimeCalculator[][] arrivalTimeCalculators,
+    public Route(ArrivalTimeFunction[][] arrivalTimeFunctions,
                  double depotTimeWindowUpperBound, double latenessWeight) {
         routeStops = new ArrayList<>();
         routeStops.add(new RouteStart());
@@ -18,7 +18,7 @@ public class Route {
         lateness = -1.0;
         newRequestPickupIndex = -1;
         newRequestDeliveryIndex = -1;
-        this.arrivalTimeCalculators = arrivalTimeCalculators;
+        this.arrivalTimeFunctions = arrivalTimeFunctions;
         this.latenessWeight = latenessWeight;
     }
 
@@ -32,7 +32,7 @@ public class Route {
         lateness = otherRoute.lateness;
         newRequestPickupIndex = -1;
         newRequestDeliveryIndex = -1;
-        arrivalTimeCalculators = otherRoute.arrivalTimeCalculators;
+        arrivalTimeFunctions = otherRoute.arrivalTimeFunctions;
         latenessWeight = otherRoute.latenessWeight;
     }
 
@@ -55,6 +55,30 @@ public class Route {
 
     public double getLateness() {
         return lateness;
+    }
+
+    public Route getRouteAfterInsertion(Request request) {
+        Route tempRoute = new Route(this);
+        tempRoute.insertRequest(request);
+
+        Route bestRoute = new Route(tempRoute);
+        while (tempRoute.cycleInsertionPoints()) {
+            if (tempRoute.getCost() < bestRoute.getCost()) {
+                bestRoute = new Route(tempRoute);
+            }
+        }
+
+        return bestRoute;
+    }
+
+    private void insertRequest(Request request) {
+        newRequestPickupIndex = 1;
+        newRequestDeliveryIndex = 2;
+
+        routeStops.add(newRequestPickupIndex, new PickupRouteStop(request));
+        routeStops.add(newRequestDeliveryIndex, new DeliveryRouteStop(request));
+
+        updateArrivalTimes(newRequestPickupIndex);
     }
 
     private boolean cycleInsertionPoints() {
@@ -92,38 +116,14 @@ public class Route {
         return true;
     }
 
-    private void insertRequest(Request request) {
-        newRequestPickupIndex = 1;
-        newRequestDeliveryIndex = 2;
-
-        routeStops.add(newRequestPickupIndex, new PickupRouteStop(request));
-        routeStops.add(newRequestDeliveryIndex, new DeliveryRouteStop(request));
-
-        updateArrivalTimes(newRequestPickupIndex);
-    }
-
     private void updateArrivalTimes(int updateFromIndex) {
         for (int i = updateFromIndex; i < routeStops.size(); ++i) {
             routeStops.get(i).setArrivalTime(
-                    arrivalTimeCalculators[routeStops.get(i-1).getNode()][routeStops.get(i).getNode()].getArrivalTime(
+                    arrivalTimeFunctions[routeStops.get(i-1).getNode()][routeStops.get(i).getNode()].getArrivalTime(
                             routeStops.get(i-1).getDepartureTime()));
         }
 
         travelTime = -1.0;
         lateness = -1.0;
-    }
-
-    public Route getRouteAfterInsertion(Request request) {
-        Route tempRoute = new Route(this);
-        tempRoute.insertRequest(request);
-
-        Route bestRoute = new Route(tempRoute);
-        while (tempRoute.cycleInsertionPoints()) {
-            if (tempRoute.getCost() < bestRoute.getCost()) {
-                bestRoute = new Route(tempRoute);
-            }
-        }
-
-        return bestRoute;
     }
 }

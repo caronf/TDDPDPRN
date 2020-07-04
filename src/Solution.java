@@ -10,14 +10,14 @@ public class Solution {
     // It's not necessary to test insertion in all routes when many of them are still empty
     private int lastRouteToTest;
 
-    public Solution(int nbRoutes, ArrivalTimeCalculator[][] arrivalTimeCalculators,
+    public Solution(int nbRoutes, ArrivalTimeFunction[][] arrivalTimeFunctions,
                     double depotTimeWindowUpperBound, double latenessWeight) {
         routes = new ArrayList<>(nbRoutes);
         cost = 0.0;
         lastRouteToTest = 0;
 
         for (int i = 0; i < nbRoutes; ++i) {
-            routes.add(new Route(arrivalTimeCalculators, depotTimeWindowUpperBound, latenessWeight));
+            routes.add(new Route(arrivalTimeFunctions, depotTimeWindowUpperBound, latenessWeight));
             cost += routes.get(i).getCost();
         }
     }

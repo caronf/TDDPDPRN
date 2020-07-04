@@ -194,14 +194,14 @@ import java.util.Scanner;
 
 public class InputData {
  	//static final int depotIndex = 0;
-    public double[][] distanceMatrix;
-    public int[][] speedFunctionMatrix;
-    public ArrayList<Request> requests;
-	public ArrayList<double[][]> speedFunctionList;
-    public double[] proposedDepartTime;
-    public double depotTimeWindowUpperBound;
-    public int nbVehicles;
-
+    public final double[][] distanceMatrix;
+    public final int[][] speedFunctionMatrix;
+    public final ArrayList<Request> requests;
+	public final ArrayList<double[][]> speedFunctionList;
+	public final ArrivalTimeFunction[][] arcArrivalTimeFunctions;
+    public final double[] proposedDepartTime;
+    public final double depotTimeWindowUpperBound;
+    public final int nbVehicles;
 
     public InputData(int nbNodes, int nbClients, double corr, int index, String tw) throws FileNotFoundException {
 		distanceMatrix = new double[nbNodes][nbNodes];
@@ -282,7 +282,7 @@ public class InputData {
 
 		int nbIntervals = Integer.parseInt(line[0]);
 		int nbTypes = Integer.parseInt(line[1]);
-		double[][] factor = new double[nbTypes][nbIntervals];
+		double[][] speedFactors = new double[nbTypes][nbIntervals];
 		proposedDepartTime = new double[nbIntervals + 1];
 
 		line = sc.nextLine().trim().split("\\s+");
@@ -291,21 +291,17 @@ public class InputData {
 			proposedDepartTime[i + 1] = Double.parseDouble(line[i]) * depotTimeWindowUpperBound;
 		}
 
-		double minFactor = 1000;
 		for (int j = 0; j < nbTypes; ++j) {
 			line = sc.nextLine().trim().split("\\s+");
 
 		    for (int i = 0; i < nbIntervals; ++i) {
-				factor[j][i] = Double.parseDouble(line[i]);
-
-				if (factor[j][i] < minFactor) {
-					minFactor = factor[j][i];
-				}
+				speedFactors[j][i] = Double.parseDouble(line[i]);
 			}
 		}
 
 		double[][] fct;
 		speedFunctionList = new ArrayList<>();
+		arcArrivalTimeFunctions = new ArrivalTimeFunction[nbNodes][nbNodes];
 		while(sc.hasNextLine()) {
 			line = sc.nextLine().trim().split("\\s+");
 		    
@@ -317,8 +313,17 @@ public class InputData {
 
 		    for (int i = 0; i < nbIntervals; ++i) {
 			  	fct[i][0] = proposedDepartTime[i + 1];
-			  	fct[i][1] = (distanceMatrix[from][to] / travelTimes[from][to]) * factor[typ][i];
+			  	fct[i][1] = (distanceMatrix[from][to] / travelTimes[from][to]) * speedFactors[typ][i];
 		  	}
+
+			arcArrivalTimeFunctions[from][to] =
+					new PiecewiseArrivalTimeFunction(proposedDepartTime, travelTimes[from][to], speedFactors[typ]);
+//			for (double departureTime = 0.0; departureTime <= proposedDepartTime[proposedDepartTime.length - 1] * 3;
+//				 departureTime += 10.0) {
+//				double arrivalTime1 = DominantShortestPath.getNeighborArrivalTime(distanceMatrix[from][to], departureTime, fct);
+//				double arrivalTime2 = arrivalTimeFunctions[from][to].getArrivalTime(departureTime);
+//				assert Math.abs(arrivalTime1 - arrivalTime2) < 0.0001;
+//			}
 
 			int functionIndex = speedFunctionList.indexOf(fct);
 		    if (functionIndex == -1) {

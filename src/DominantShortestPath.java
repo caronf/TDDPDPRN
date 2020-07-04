@@ -1,7 +1,7 @@
 import java.util.ArrayList;
 import java.util.HashSet;
 
-public class DominantShortestPath extends ArrivalTimeCalculator {
+public class DominantShortestPath extends ArrivalTimeFunction {
     // Known (departure time, arrival time) pairs for the dominant shortest path
     ArrayList<double[]> points;
 
@@ -11,9 +11,13 @@ public class DominantShortestPath extends ArrivalTimeCalculator {
     // Complete paths (may be useful to get an itinerary)
     ArrayList<ArrayList<Integer>> paths;
 
+    // TODO : remove input data from here
+    InputData inputData;
+
     public DominantShortestPath(ArrayList<ArrayList<Integer>> paths, double[] proposedDepartureTimes,
-                                ArrayList<ArrayList<Double>> arrivalTimes) {
+                                ArrayList<ArrayList<Double>> arrivalTimes, InputData inputData) {
         this.paths = paths;
+        this.inputData = inputData;
 
         // We will have at least proposedDepartureTimes.length points
         points = new ArrayList<>(proposedDepartureTimes.length);
@@ -80,6 +84,10 @@ public class DominantShortestPath extends ArrivalTimeCalculator {
 
         points.add(new double[] {proposedDepartureTimes[proposedDepartureTimes.length - 1],
                 arrivalTimes.get(currentBestPath).get(proposedDepartureTimes.length - 1)});
+
+        // The travel time should be the same for the first and last point (within 0.01%)
+        assert Math.abs(points.get(0)[1] / (points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]) - 1) <
+                0.0001;
     }
 
     @Override
@@ -95,21 +103,34 @@ public class DominantShortestPath extends ArrivalTimeCalculator {
                 (points.get(k)[1] - points.get(k - 1)[1]) / (points.get(k)[0] - points.get(k - 1)[0]);
         arrivalTime += departureTime - departureTimeRemainder;
         assert arrivalTime >= departureTime;
+
+        ArrayList<Integer> path = paths.get(bestPaths.get(k-1));
+        double arrivalTime2 = departureTime;
+        for (int i = 0; i < path.size() - 1; ++i) {
+            arrivalTime2 = getNeighborArrivalTime(inputData.distanceMatrix[path.get(i)][path.get(i + 1)], arrivalTime2,
+                    inputData.speedFunctionList.get(inputData.speedFunctionMatrix[path.get(i)][path.get(i + 1)] - 1));
+        }
+
         return arrivalTime;
     }
 
-    public static ArrivalTimeCalculator[][] getDominantShortestPaths(InputData inputData) {
+    @Override
+    public double getDepartureTime(double arrivalTime) {
+        return 0;
+    }
+
+    public static ArrivalTimeFunction[][] getDominantShortestPaths(InputData inputData) {
         int nbNodes = inputData.distanceMatrix.length;
-        ArrivalTimeCalculator[][] dominantShortestPaths = new ArrivalTimeCalculator[nbNodes][nbNodes];
+        ArrivalTimeFunction[][] dominantShortestPaths = new ArrivalTimeFunction[nbNodes][nbNodes];
 
         for (int departureNode = 0; departureNode < nbNodes; ++departureNode) {
             // pathsPerDestination[i][j] : Path j to destination i
             ArrayList<ArrayList<ArrayList<Integer>>> pathsPerDestination = new ArrayList<>(nbNodes);
             // arrivalTimesPerPath[i][j][k] : Arrival time at destination i using path j leaving at proposedDepartTime[k]
-            ArrayList<ArrayList<ArrayList<Double>>> arrivalTimesPerPath = new ArrayList<>(nbNodes);
+            //ArrayList<ArrayList<ArrayList<Double>>> arrivalTimesPerPath = new ArrayList<>(nbNodes);
             for (int i = 0; i < nbNodes; ++i) {
                 pathsPerDestination.add(new ArrayList<>());
-                arrivalTimesPerPath.add(new ArrayList<>());
+                //arrivalTimesPerPath.add(new ArrayList<>());
             }
 
             // Add the path from departure node to departure node
@@ -160,27 +181,53 @@ public class DominantShortestPath extends ArrivalTimeCalculator {
                         if (pathIndices[nextNode] == -1) {
                             pathsPerDestination.get(nextNode).add(nextNodePath);
                             pathIndices[nextNode] = pathsPerDestination.get(nextNode).size() - 1;
-                            arrivalTimesPerPath.get(nextNode).add(new ArrayList<>(inputData.proposedDepartTime.length));
 
-                            // Calculate the arrival time when using the path at other times
-                            for (double proposedDepartureTime : inputData.proposedDepartTime) {
-                                double arrivalTime;
-                                if (proposedDepartureTime == departureTime) {
-                                    arrivalTime = arrivalTimes[nextNode];
+                            if (nextNodePath.size() >= 3) {
+                                PiecewiseArrivalTimeFunction arrivalTimeFunction = new PiecewiseArrivalTimeFunction(
+                                        (PiecewiseArrivalTimeFunction) inputData.arcArrivalTimeFunctions[nextNodePath.get(0)][nextNodePath.get(1)],
+                                        (PiecewiseArrivalTimeFunction) inputData.arcArrivalTimeFunctions[nextNodePath.get(1)][nextNodePath.get(2)]);
+                                for (int i = 3; i < nextNodePath.size(); ++i) {
+                                    arrivalTimeFunction = new PiecewiseArrivalTimeFunction(arrivalTimeFunction,
+                                            (PiecewiseArrivalTimeFunction) inputData.arcArrivalTimeFunctions[nextNodePath.get(i - 1)][nextNodePath.get(i)]);
                                 }
-                                else {
-                                    arrivalTime = proposedDepartureTime;
+
+                                for (double departureTime2 = 0.0;
+                                     departureTime2 <= inputData.proposedDepartTime[inputData.proposedDepartTime.length - 1] * 3;
+                                     departureTime2 += 10.0) {
+                                    double arrivalTime1 = departureTime2;
                                     for (int i = 0; i < nextNodePath.size() - 1; ++i) {
-                                        arrivalTime = getNeighborArrivalTime(
+                                        arrivalTime1 = getNeighborArrivalTime(
                                                 inputData.distanceMatrix[nextNodePath.get(i)][nextNodePath.get(i + 1)],
-                                                arrivalTime,
+                                                arrivalTime1,
                                                 inputData.speedFunctionList.get(
                                                         inputData.speedFunctionMatrix[nextNodePath.get(i)][nextNodePath.get(i + 1)] - 1));
                                     }
+                                    double arrivalTime2 = arrivalTimeFunction.getArrivalTime(departureTime2);
+                                    assert Math.abs(arrivalTime1 - arrivalTime2) < 0.001;
                                 }
-
-                                arrivalTimesPerPath.get(nextNode).get(pathIndices[nextNode]).add(arrivalTime);
                             }
+
+//                            arrivalTimesPerPath.get(nextNode).add(new ArrayList<>(inputData.proposedDepartTime.length));
+
+                            // Calculate the arrival time when using the path at other times
+//                            for (double proposedDepartureTime : inputData.proposedDepartTime) {
+//                                double arrivalTime;
+//                                if (proposedDepartureTime == departureTime) {
+//                                    arrivalTime = arrivalTimes[nextNode];
+//                                }
+//                                else {
+//                                    arrivalTime = proposedDepartureTime;
+//                                    for (int i = 0; i < nextNodePath.size() - 1; ++i) {
+//                                        arrivalTime = getNeighborArrivalTime(
+//                                                inputData.distanceMatrix[nextNodePath.get(i)][nextNodePath.get(i + 1)],
+//                                                arrivalTime,
+//                                                inputData.speedFunctionList.get(
+//                                                        inputData.speedFunctionMatrix[nextNodePath.get(i)][nextNodePath.get(i + 1)] - 1));
+//                                    }
+//                                }
+//
+//                                arrivalTimesPerPath.get(nextNode).get(pathIndices[nextNode]).add(arrivalTime);
+//                            }
                         }
                     }
 
@@ -202,22 +249,22 @@ public class DominantShortestPath extends ArrivalTimeCalculator {
                 }
             }
 
-            for (int arrivalNode = 0; arrivalNode < nbNodes; ++arrivalNode) {
-                if (departureNode == arrivalNode) {
-                    dominantShortestPaths[departureNode][arrivalNode] = new ImmediateArrivalTimeCalculator();
-                }
-                else {
-                    dominantShortestPaths[departureNode][arrivalNode] = new DominantShortestPath(
-                            pathsPerDestination.get(arrivalNode), inputData.proposedDepartTime,
-                            arrivalTimesPerPath.get(arrivalNode));
-                }
-            }
+//            for (int arrivalNode = 0; arrivalNode < nbNodes; ++arrivalNode) {
+//                if (departureNode == arrivalNode) {
+//                    dominantShortestPaths[departureNode][arrivalNode] = new ImmediateArrivalTimeFunction();
+//                }
+//                else {
+//                    dominantShortestPaths[departureNode][arrivalNode] = new DominantShortestPath(
+//                            pathsPerDestination.get(arrivalNode), inputData.proposedDepartTime,
+//                            arrivalTimesPerPath.get(arrivalNode), inputData);
+//                }
+//            }
         }
 
         return dominantShortestPaths;
     }
 
-    private static double getNeighborArrivalTime(double distance, double departureTime, double [][] speedFunction){
+    public static double getNeighborArrivalTime(double distance, double departureTime, double [][] speedFunction) {
         double endOfTheDay = speedFunction[speedFunction.length - 1][0];
         double currentTime = departureTime % endOfTheDay;
         double distanceTravelled = 0.0;
