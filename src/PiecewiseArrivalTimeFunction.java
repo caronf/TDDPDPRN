@@ -4,6 +4,10 @@ import java.util.Comparator;
 public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
     public ArrayList<double[]> points;
 
+    public PiecewiseArrivalTimeFunction() {
+        points = new ArrayList<>();
+    }
+
     public PiecewiseArrivalTimeFunction(double[] stepTimes, double baseTravelTime, double[] speedFactors) {
         points = new ArrayList<>();
         points.add(new double[] {0.0, getNeighborArrivalTime(baseTravelTime, 0, stepTimes, speedFactors)});

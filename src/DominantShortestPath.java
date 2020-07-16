@@ -1,122 +1,140 @@
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.concurrent.ThreadLocalRandom;
 
-public class DominantShortestPath extends ArrivalTimeFunction {
-    // Known (departure time, arrival time) pairs for the dominant shortest path
-    ArrayList<double[]> points;
-
+public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
     // bestPaths[i] : index of the best path between points i and i+1
     ArrayList<Integer> bestPaths;
 
     // Complete paths (may be useful to get an itinerary)
     ArrayList<ArrayList<Integer>> paths;
 
-    // TODO : remove input data from here
-    InputData inputData;
-
-    public DominantShortestPath(ArrayList<ArrayList<Integer>> paths, double[] proposedDepartureTimes,
-                                ArrayList<ArrayList<Double>> arrivalTimes, InputData inputData) {
+    public DominantShortestPath(ArrayList<ArrayList<Integer>> paths, ArrivalTimeFunction[][] arcArrivalTimeFunctions) {
         this.paths = paths;
-        this.inputData = inputData;
+        bestPaths = new ArrayList<>();
 
-        // We will have at least proposedDepartureTimes.length points
-        points = new ArrayList<>(proposedDepartureTimes.length);
-        bestPaths = new ArrayList<>(proposedDepartureTimes.length);
+        PiecewiseArrivalTimeFunction[] arrivalTimeFunctions = new PiecewiseArrivalTimeFunction[paths.size()];
+        int bestPathIndex = -1;
+        double bestPathSlope = 0.0;
 
-        int currentBestPath = 0;
-        for(int k = 0; k < proposedDepartureTimes.length - 1; ++k) {
-            double currentSlope =
-                    (arrivalTimes.get(currentBestPath).get(k + 1) - arrivalTimes.get(currentBestPath).get(k)) /
-                    (proposedDepartureTimes[k + 1] - proposedDepartureTimes[k]);
-
-            // Look for a better path which may be different from the last iteration because of the new slopes
-            for (int j = 0; j < paths.size(); ++j) {
-                if (j != currentBestPath && arrivalTimes.get(j).get(k) <= arrivalTimes.get(currentBestPath).get(k)) {
-                    double otherSlope = (arrivalTimes.get(j).get(k + 1) - arrivalTimes.get(j).get(k)) /
-                            (proposedDepartureTimes[k + 1] - proposedDepartureTimes[k]);
-                    if (arrivalTimes.get(j).get(k) < arrivalTimes.get(currentBestPath).get(k) ||
-                            otherSlope < currentSlope) {
-                        currentBestPath = j;
-                        currentSlope = otherSlope;
-                    }
-                }
+        for (int i = 0; i < paths.size(); ++i) {
+            ArrayList<Integer> path = paths.get(i);
+            assert path.size() >= 2;
+            arrivalTimeFunctions[i] = (PiecewiseArrivalTimeFunction) arcArrivalTimeFunctions[path.get(0)][path.get(1)];
+            for (int j = 2; j < path.size(); ++j) {
+                arrivalTimeFunctions[i] = new PiecewiseArrivalTimeFunction(arrivalTimeFunctions[i],
+                        (PiecewiseArrivalTimeFunction) arcArrivalTimeFunctions[path.get(j - 1)][path.get(j)]);
             }
 
-            points.add(new double[] {proposedDepartureTimes[k], arrivalTimes.get(currentBestPath).get(k)});
-            bestPaths.add(currentBestPath);
-
-            // Find all intersections between the current point and the next proposed departure time
-            while (true) {
-                int nextIntersectingPath = -1;
-                double nextSlope = Double.MIN_VALUE;
-                double nextIntersectionX = proposedDepartureTimes[k + 1] - proposedDepartureTimes[k];
-
-                // Find the next intersection with the current path
-                // If multiple paths intersect at the same point, the one with the mellowest slope will be selected
-                for (int j = 0; j < paths.size(); ++j) {
-                    if (j != currentBestPath) {
-                        double otherSlope = (arrivalTimes.get(j).get(k + 1) - arrivalTimes.get(j).get(k)) /
-                                (proposedDepartureTimes[k + 1] - proposedDepartureTimes[k]);
-                        double intersectionX = (arrivalTimes.get(j).get(k) - arrivalTimes.get(currentBestPath).get(k)) /
-                                (currentSlope - otherSlope);
-                        if (intersectionX + proposedDepartureTimes[k] > points.get(points.size() - 1)[0] &&
-                                (intersectionX < nextIntersectionX ||
-                                intersectionX == nextIntersectionX && otherSlope < nextSlope)) {
-                            nextIntersectingPath = j;
-                            nextSlope = otherSlope;
-                            nextIntersectionX = intersectionX;
-                        }
-                    }
-                }
-
-                if (nextIntersectingPath == -1) {
-                    // No more intersections before the next proposed departure time
-                    break;
-                }
-
-                points.add(new double[] {nextIntersectionX + proposedDepartureTimes[k],
-                        arrivalTimes.get(nextIntersectingPath).get(k) + nextSlope * nextIntersectionX});
-                bestPaths.add(nextIntersectingPath);
-                currentBestPath = nextIntersectingPath;
-                currentSlope = nextSlope;
+            assert arrivalTimeFunctions[i].points.get(0)[0] == 0.0;
+            double pathSlope = (arrivalTimeFunctions[i].points.get(1)[1] - arrivalTimeFunctions[i].points.get(0)[1]) /
+                    arrivalTimeFunctions[i].points.get(1)[0];
+            if (bestPathIndex == -1 ||
+                    arrivalTimeFunctions[i].points.get(0)[1] < arrivalTimeFunctions[bestPathIndex].points.get(0)[1] ||
+                    (arrivalTimeFunctions[i].points.get(0)[1] == arrivalTimeFunctions[bestPathIndex].points.get(0)[1] &&
+                            pathSlope < bestPathSlope)) {
+                bestPathIndex = i;
+                bestPathSlope = pathSlope;
             }
         }
 
-        points.add(new double[] {proposedDepartureTimes[proposedDepartureTimes.length - 1],
-                arrivalTimes.get(currentBestPath).get(proposedDepartureTimes.length - 1)});
+        points.add(arrivalTimeFunctions[bestPathIndex].points.get(0));
+        bestPaths.add(bestPathIndex);
+
+        int[] stepPerPath = new int[paths.size()];
+        double bestPathOrigin = arrivalTimeFunctions[bestPathIndex].points.get(0)[1] -
+                bestPathSlope * arrivalTimeFunctions[bestPathIndex].points.get(0)[0];
+
+        while (stepPerPath[bestPathIndex] < arrivalTimeFunctions[bestPathIndex].points.size() - 1) {
+            int nextIntersectingPath = -1;
+            double nextIntersectionX =
+                    arrivalTimeFunctions[bestPathIndex].points.get(stepPerPath[bestPathIndex] + 1)[0];
+            double nextSlope = Double.MIN_VALUE;
+            double nextOrigin = 0.0;
+            int nextStep = -1;
+
+            if (stepPerPath[bestPathIndex] < arrivalTimeFunctions[bestPathIndex].points.size() - 2) {
+                nextSlope = (arrivalTimeFunctions[bestPathIndex].points.get(stepPerPath[bestPathIndex] + 2)[1] -
+                        arrivalTimeFunctions[bestPathIndex].points.get(stepPerPath[bestPathIndex] + 1)[1]) /
+                        (arrivalTimeFunctions[bestPathIndex].points.get(stepPerPath[bestPathIndex] + 2)[0] -
+                                arrivalTimeFunctions[bestPathIndex].points.get(stepPerPath[bestPathIndex] + 1)[0]);
+                nextOrigin = arrivalTimeFunctions[bestPathIndex].points.get(stepPerPath[bestPathIndex] + 1)[1] -
+                        nextSlope * arrivalTimeFunctions[bestPathIndex].points.get(stepPerPath[bestPathIndex] + 1)[0];
+            }
+
+            // Find the next intersection with the current path
+            // If multiple paths intersect at the same point, the one with the mellowest slope will be selected
+            for (int i = 0; i < paths.size(); ++i) {
+                if (i != bestPathIndex) {
+                    while (arrivalTimeFunctions[i].points.get(stepPerPath[i] + 1)[0] <
+                            points.get(points.size() - 1)[0]) {
+                        ++stepPerPath[i];
+                    }
+
+                    for (int j = stepPerPath[i]; j < arrivalTimeFunctions[i].points.size() - 1 &&
+                            arrivalTimeFunctions[i].points.get(j)[0] <= nextIntersectionX; ++j) {
+                        double slope = (arrivalTimeFunctions[i].points.get(j + 1)[1] -
+                                        arrivalTimeFunctions[i].points.get(j)[1]) /
+                                (arrivalTimeFunctions[i].points.get(j + 1)[0] -
+                                        arrivalTimeFunctions[i].points.get(j)[0]);
+
+                        if (bestPathSlope != slope) {
+                            double origin = arrivalTimeFunctions[i].points.get(j)[1] -
+                                    slope * arrivalTimeFunctions[i].points.get(j)[0];
+                            double intersectionX = (origin - bestPathOrigin) / (bestPathSlope - slope);
+
+                            if (intersectionX > points.get(points.size() - 1)[0] &&
+                                    intersectionX >= arrivalTimeFunctions[i].points.get(j)[0] &&
+                                    intersectionX < arrivalTimeFunctions[i].points.get(j + 1)[0] &&
+                                    (intersectionX < nextIntersectionX ||
+                                            intersectionX == nextIntersectionX && slope < nextSlope)) {
+                                assert slope < bestPathSlope;
+                                nextIntersectingPath = i;
+                                nextSlope = slope;
+                                nextOrigin = origin;
+                                nextIntersectionX = intersectionX;
+                                nextStep = j;
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (nextIntersectingPath == -1) {
+                // No intersection was found before the next point
+                points.add(arrivalTimeFunctions[bestPathIndex].points.get(stepPerPath[bestPathIndex] + 1));
+                ++stepPerPath[bestPathIndex];
+            } else {
+                bestPathIndex = nextIntersectingPath;
+                points.add(new double[] {nextIntersectionX,
+                        arrivalTimeFunctions[bestPathIndex].getArrivalTime(nextIntersectionX)});
+                stepPerPath[bestPathIndex] = nextStep;
+            }
+
+            bestPaths.add(bestPathIndex);
+            bestPathSlope = nextSlope;
+            bestPathOrigin = nextOrigin;
+
+            for (int i = 0; i < paths.size(); ++i) {
+                assert arrivalTimeFunctions[bestPathIndex].getArrivalTime(nextIntersectionX) <=
+                        arrivalTimeFunctions[i].getArrivalTime(nextIntersectionX) + 0.001;
+            }
+        }
 
         // The travel time should be the same for the first and last point (within 0.01%)
         assert Math.abs(points.get(0)[1] / (points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]) - 1) <
                 0.0001;
-    }
 
-    @Override
-    public double getArrivalTime(double departureTime) {
-        int k = 1;
-        double departureTimeRemainder = departureTime % points.get(points.size() - 1)[0];
-        while (points.get(k)[0] <= departureTimeRemainder) {
-            ++k;
+        // The arrival time should correspond to the best path for any departure time
+        for (double departureTime = 0.0; departureTime <= points.get(points.size() - 1)[0] * 3;
+             departureTime += ThreadLocalRandom.current().nextDouble(1.0, 20.0)) {
+            double arrivalTime1 = Double.MAX_VALUE;
+            for (int i = 0; i < paths.size(); ++i) {
+                arrivalTime1 = Math.min(arrivalTime1, arrivalTimeFunctions[i].getArrivalTime(departureTime));
+            }
+            double arrivalTime2 = getArrivalTime(departureTime);
+            assert Math.abs(arrivalTime1 - arrivalTime2) < 0.001;
         }
-
-        // Perform a linear interpolation between points k-1 and k
-        double arrivalTime = points.get(k-1)[1] + (departureTimeRemainder - points.get(k - 1)[0]) *
-                (points.get(k)[1] - points.get(k - 1)[1]) / (points.get(k)[0] - points.get(k - 1)[0]);
-        arrivalTime += departureTime - departureTimeRemainder;
-        assert arrivalTime >= departureTime;
-
-        ArrayList<Integer> path = paths.get(bestPaths.get(k-1));
-        double arrivalTime2 = departureTime;
-        for (int i = 0; i < path.size() - 1; ++i) {
-            arrivalTime2 = getNeighborArrivalTime(inputData.distanceMatrix[path.get(i)][path.get(i + 1)], arrivalTime2,
-                    inputData.speedFunctionList.get(inputData.speedFunctionMatrix[path.get(i)][path.get(i + 1)] - 1));
-        }
-
-        return arrivalTime;
-    }
-
-    @Override
-    public double getDepartureTime(double arrivalTime) {
-        return 0;
     }
 
     public static ArrivalTimeFunction[][] getDominantShortestPaths(InputData inputData) {
@@ -126,19 +144,14 @@ public class DominantShortestPath extends ArrivalTimeFunction {
         for (int departureNode = 0; departureNode < nbNodes; ++departureNode) {
             // pathsPerDestination[i][j] : Path j to destination i
             ArrayList<ArrayList<ArrayList<Integer>>> pathsPerDestination = new ArrayList<>(nbNodes);
-            // arrivalTimesPerPath[i][j][k] : Arrival time at destination i using path j leaving at proposedDepartTime[k]
-            //ArrayList<ArrayList<ArrayList<Double>>> arrivalTimesPerPath = new ArrayList<>(nbNodes);
             for (int i = 0; i < nbNodes; ++i) {
                 pathsPerDestination.add(new ArrayList<>());
-                //arrivalTimesPerPath.add(new ArrayList<>());
             }
 
             // Add the path from departure node to departure node
             pathsPerDestination.get(departureNode).add(new ArrayList<>());
             pathsPerDestination.get(departureNode).get(0).add(departureNode);
 
-            // arrivalTimes[i][j][k] : Arrival time at destination i using path j leaving at proposedDepartTime[k]
-            //double[][][] arrivalTimes = new double[nbNodes][inputData.proposedDepartTime.length][inputData.proposedDepartTime.length];
             double[] arrivalTimes = new double[nbNodes];
             int[] previousNodes = new int[nbNodes];
             int[] pathIndices = new int[nbNodes];
@@ -181,62 +194,14 @@ public class DominantShortestPath extends ArrivalTimeFunction {
                         if (pathIndices[nextNode] == -1) {
                             pathsPerDestination.get(nextNode).add(nextNodePath);
                             pathIndices[nextNode] = pathsPerDestination.get(nextNode).size() - 1;
-
-                            if (nextNodePath.size() >= 3) {
-                                PiecewiseArrivalTimeFunction arrivalTimeFunction = new PiecewiseArrivalTimeFunction(
-                                        (PiecewiseArrivalTimeFunction) inputData.arcArrivalTimeFunctions[nextNodePath.get(0)][nextNodePath.get(1)],
-                                        (PiecewiseArrivalTimeFunction) inputData.arcArrivalTimeFunctions[nextNodePath.get(1)][nextNodePath.get(2)]);
-                                for (int i = 3; i < nextNodePath.size(); ++i) {
-                                    arrivalTimeFunction = new PiecewiseArrivalTimeFunction(arrivalTimeFunction,
-                                            (PiecewiseArrivalTimeFunction) inputData.arcArrivalTimeFunctions[nextNodePath.get(i - 1)][nextNodePath.get(i)]);
-                                }
-
-                                for (double departureTime2 = 0.0;
-                                     departureTime2 <= inputData.proposedDepartTime[inputData.proposedDepartTime.length - 1] * 3;
-                                     departureTime2 += 10.0) {
-                                    double arrivalTime1 = departureTime2;
-                                    for (int i = 0; i < nextNodePath.size() - 1; ++i) {
-                                        arrivalTime1 = getNeighborArrivalTime(
-                                                inputData.distanceMatrix[nextNodePath.get(i)][nextNodePath.get(i + 1)],
-                                                arrivalTime1,
-                                                inputData.speedFunctionList.get(
-                                                        inputData.speedFunctionMatrix[nextNodePath.get(i)][nextNodePath.get(i + 1)] - 1));
-                                    }
-                                    double arrivalTime2 = arrivalTimeFunction.getArrivalTime(departureTime2);
-                                    assert Math.abs(arrivalTime1 - arrivalTime2) < 0.001;
-                                }
-                            }
-
-//                            arrivalTimesPerPath.get(nextNode).add(new ArrayList<>(inputData.proposedDepartTime.length));
-
-                            // Calculate the arrival time when using the path at other times
-//                            for (double proposedDepartureTime : inputData.proposedDepartTime) {
-//                                double arrivalTime;
-//                                if (proposedDepartureTime == departureTime) {
-//                                    arrivalTime = arrivalTimes[nextNode];
-//                                }
-//                                else {
-//                                    arrivalTime = proposedDepartureTime;
-//                                    for (int i = 0; i < nextNodePath.size() - 1; ++i) {
-//                                        arrivalTime = getNeighborArrivalTime(
-//                                                inputData.distanceMatrix[nextNodePath.get(i)][nextNodePath.get(i + 1)],
-//                                                arrivalTime,
-//                                                inputData.speedFunctionList.get(
-//                                                        inputData.speedFunctionMatrix[nextNodePath.get(i)][nextNodePath.get(i + 1)] - 1));
-//                                    }
-//                                }
-//
-//                                arrivalTimesPerPath.get(nextNode).get(pathIndices[nextNode]).add(arrivalTime);
-//                            }
                         }
                     }
 
                     // Update the arrival times of unvisited neighbors
                     for (int i : nodesToVisit) {
                         if(inputData.distanceMatrix[nextNode][i] > 0) {
-                            double arrivalTime = getNeighborArrivalTime(inputData.distanceMatrix[nextNode][i],
-                                    arrivalTimes[nextNode],
-                                    inputData.speedFunctionList.get(inputData.speedFunctionMatrix[nextNode][i] - 1));
+                            double arrivalTime = inputData.arcArrivalTimeFunctions[nextNode][i].getArrivalTime(
+                                    arrivalTimes[nextNode]);
 
                             if (arrivalTime < arrivalTimes[i]) {
                                 arrivalTimes[i] = arrivalTime;
@@ -249,53 +214,17 @@ public class DominantShortestPath extends ArrivalTimeFunction {
                 }
             }
 
-//            for (int arrivalNode = 0; arrivalNode < nbNodes; ++arrivalNode) {
-//                if (departureNode == arrivalNode) {
-//                    dominantShortestPaths[departureNode][arrivalNode] = new ImmediateArrivalTimeFunction();
-//                }
-//                else {
-//                    dominantShortestPaths[departureNode][arrivalNode] = new DominantShortestPath(
-//                            pathsPerDestination.get(arrivalNode), inputData.proposedDepartTime,
-//                            arrivalTimesPerPath.get(arrivalNode), inputData);
-//                }
-//            }
+            for (int arrivalNode = 0; arrivalNode < nbNodes; ++arrivalNode) {
+                if (departureNode == arrivalNode) {
+                    dominantShortestPaths[departureNode][arrivalNode] = new ImmediateArrivalTimeFunction();
+                }
+                else {
+                    dominantShortestPaths[departureNode][arrivalNode] = new DominantShortestPath(
+                            pathsPerDestination.get(arrivalNode), inputData.arcArrivalTimeFunctions);
+                }
+            }
         }
 
         return dominantShortestPaths;
-    }
-
-    public static double getNeighborArrivalTime(double distance, double departureTime, double [][] speedFunction) {
-        double endOfTheDay = speedFunction[speedFunction.length - 1][0];
-        double currentTime = departureTime % endOfTheDay;
-        double distanceTravelled = 0.0;
-        int nbCompleteDays = (int) (departureTime / endOfTheDay);
-        int currentStep = 0;
-
-        // Find the initial step in the speed function
-        while(currentTime > speedFunction[currentStep][0]) {
-            ++currentStep;
-        }
-
-        // Find the final step in the speed function
-        double distanceInCurrentStep = (speedFunction[currentStep][0] - currentTime) * speedFunction[currentStep][1];
-        while(distanceTravelled + distanceInCurrentStep < distance){
-            distanceTravelled = distanceTravelled + distanceInCurrentStep;
-
-            if(currentStep == speedFunction.length - 1){
-                currentTime = 0.0;
-                currentStep = 0;
-                ++nbCompleteDays;
-            } else {
-                currentTime = speedFunction[currentStep][0];
-                ++currentStep;
-            }
-
-            distanceInCurrentStep = (speedFunction[currentStep][0] - currentTime) * speedFunction[currentStep][1];
-        }
-
-        currentTime += (distance - distanceTravelled) / speedFunction[currentStep][1];
-        currentTime += nbCompleteDays * endOfTheDay;
-        assert currentTime >= departureTime;
-        return currentTime;
     }
 }
