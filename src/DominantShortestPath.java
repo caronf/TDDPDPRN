@@ -26,13 +26,14 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
                         (PiecewiseArrivalTimeFunction) arcArrivalTimeFunctions[path.get(j - 1)][path.get(j)]);
             }
 
-            assert arrivalTimeFunctions[i].points.get(0)[0] == 0.0;
+            assert DoubleComparator.equal(arrivalTimeFunctions[i].points.get(0)[0], 0.0);
             double pathSlope = (arrivalTimeFunctions[i].points.get(1)[1] - arrivalTimeFunctions[i].points.get(0)[1]) /
                     arrivalTimeFunctions[i].points.get(1)[0];
             if (bestPathIndex == -1 ||
-                    arrivalTimeFunctions[i].points.get(0)[1] < arrivalTimeFunctions[bestPathIndex].points.get(0)[1] ||
-                    (arrivalTimeFunctions[i].points.get(0)[1] == arrivalTimeFunctions[bestPathIndex].points.get(0)[1] &&
-                            pathSlope < bestPathSlope)) {
+                    DoubleComparator.lessThan(arrivalTimeFunctions[i].points.get(0)[1],
+                            arrivalTimeFunctions[bestPathIndex].points.get(0)[1]) ||
+                    DoubleComparator.equal(arrivalTimeFunctions[i].points.get(0)[1],
+                            arrivalTimeFunctions[bestPathIndex].points.get(0)[1]) && pathSlope < bestPathSlope) {
                 bestPathIndex = i;
                 bestPathSlope = pathSlope;
             }
@@ -66,35 +67,43 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
             // If multiple paths intersect at the same point, the one with the mellowest slope will be selected
             for (int i = 0; i < paths.size(); ++i) {
                 if (i != bestPathIndex) {
-                    while (arrivalTimeFunctions[i].points.get(stepPerPath[i] + 1)[0] <
-                            points.get(points.size() - 1)[0]) {
+                    while (DoubleComparator.lessThan(arrivalTimeFunctions[i].points.get(stepPerPath[i] + 1)[0],
+                            points.get(points.size() - 1)[0])) {
                         ++stepPerPath[i];
                     }
 
                     for (int j = stepPerPath[i]; j < arrivalTimeFunctions[i].points.size() - 1 &&
-                            arrivalTimeFunctions[i].points.get(j)[0] <= nextIntersectionX; ++j) {
+                            DoubleComparator.lessOrEqual(arrivalTimeFunctions[i].points.get(j)[0], nextIntersectionX);
+                         ++j) {
                         double slope = (arrivalTimeFunctions[i].points.get(j + 1)[1] -
                                         arrivalTimeFunctions[i].points.get(j)[1]) /
                                 (arrivalTimeFunctions[i].points.get(j + 1)[0] -
                                         arrivalTimeFunctions[i].points.get(j)[0]);
+                        double origin = arrivalTimeFunctions[i].points.get(j)[1] -
+                                slope * arrivalTimeFunctions[i].points.get(j)[0];
+                        double intersectionX = -1.0;
 
-                        if (bestPathSlope != slope) {
-                            double origin = arrivalTimeFunctions[i].points.get(j)[1] -
-                                    slope * arrivalTimeFunctions[i].points.get(j)[0];
-                            double intersectionX = (origin - bestPathOrigin) / (bestPathSlope - slope);
+                        if (!DoubleComparator.equal(bestPathSlope, slope)) {
+                            intersectionX = (origin - bestPathOrigin) / (bestPathSlope - slope);
+                        } else if (DoubleComparator.equal(bestPathOrigin, origin)) {
+                            intersectionX =
+                                    arrivalTimeFunctions[bestPathIndex].points.get(stepPerPath[bestPathIndex] + 1)[0];
+                        }
 
-                            if (intersectionX > points.get(points.size() - 1)[0] &&
-                                    intersectionX >= arrivalTimeFunctions[i].points.get(j)[0] &&
-                                    intersectionX < arrivalTimeFunctions[i].points.get(j + 1)[0] &&
-                                    (intersectionX < nextIntersectionX ||
-                                            intersectionX == nextIntersectionX && slope < nextSlope)) {
-                                assert slope < bestPathSlope;
-                                nextIntersectingPath = i;
-                                nextSlope = slope;
-                                nextOrigin = origin;
-                                nextIntersectionX = intersectionX;
-                                nextStep = j;
-                            }
+                        if (DoubleComparator.greaterThan(intersectionX, points.get(points.size() - 1)[0]) &&
+                                DoubleComparator.greaterOrEqual(intersectionX,
+                                        arrivalTimeFunctions[i].points.get(j)[0]) &&
+                                DoubleComparator.lessThan(intersectionX,
+                                        arrivalTimeFunctions[i].points.get(j + 1)[0]) &&
+                                (DoubleComparator.lessThan(intersectionX, nextIntersectionX) &&
+                                                DoubleComparator.lessOrEqual(slope, bestPathSlope) ||
+                                        DoubleComparator.equal(intersectionX, nextIntersectionX) &&
+                                                DoubleComparator.lessThan(slope, nextSlope))) {
+                            nextIntersectingPath = i;
+                            nextSlope = slope;
+                            nextOrigin = origin;
+                            nextIntersectionX = intersectionX;
+                            nextStep = j;
                         }
                     }
                 }
@@ -116,24 +125,26 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
             bestPathOrigin = nextOrigin;
 
             for (int i = 0; i < paths.size(); ++i) {
-                assert arrivalTimeFunctions[bestPathIndex].getArrivalTime(nextIntersectionX) <=
-                        arrivalTimeFunctions[i].getArrivalTime(nextIntersectionX) + 0.001;
+                assert DoubleComparator.lessOrEqual(
+                        arrivalTimeFunctions[bestPathIndex].getArrivalTime(nextIntersectionX),
+                        arrivalTimeFunctions[i].getArrivalTime(nextIntersectionX));
             }
         }
 
-        // The travel time should be the same for the first and last point (within 0.01%)
-        assert Math.abs(points.get(0)[1] / (points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]) - 1) <
-                0.0001;
+        // The travel time should be the same for the first and last point
+        assert DoubleComparator.equal(points.get(0)[1],
+                points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]);
 
         // The arrival time should correspond to the best path for any departure time
-        for (double departureTime = 0.0; departureTime <= points.get(points.size() - 1)[0] * 3;
+        for (double departureTime = 0.0;
+             DoubleComparator.lessOrEqual(departureTime, points.get(points.size() - 1)[0] * 3);
              departureTime += ThreadLocalRandom.current().nextDouble(1.0, 20.0)) {
             double arrivalTime1 = Double.MAX_VALUE;
             for (int i = 0; i < paths.size(); ++i) {
                 arrivalTime1 = Math.min(arrivalTime1, arrivalTimeFunctions[i].getArrivalTime(departureTime));
             }
             double arrivalTime2 = getArrivalTime(departureTime);
-            assert Math.abs(arrivalTime1 - arrivalTime2) < 0.001;
+            assert DoubleComparator.equal(arrivalTime1, arrivalTime2);
         }
     }
 
@@ -178,7 +189,7 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
                     if (nextNode == -1) {
                         // Find the node to visit next
                         for (int i : nodesToVisit) {
-                            if (nextNode < 0 || arrivalTimes[i] < arrivalTimes[nextNode]) {
+                            if (nextNode < 0 || DoubleComparator.lessThan(arrivalTimes[i], arrivalTimes[nextNode])) {
                                 nextNode = i;
                             }
                         }
@@ -199,11 +210,11 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
 
                     // Update the arrival times of unvisited neighbors
                     for (int i : nodesToVisit) {
-                        if(inputData.distanceMatrix[nextNode][i] > 0) {
+                        if(DoubleComparator.greaterThan(inputData.distanceMatrix[nextNode][i], 0.0)) {
                             double arrivalTime = inputData.arcArrivalTimeFunctions[nextNode][i].getArrivalTime(
                                     arrivalTimes[nextNode]);
 
-                            if (arrivalTime < arrivalTimes[i]) {
+                            if (DoubleComparator.lessThan(arrivalTime, arrivalTimes[i])) {
                                 arrivalTimes[i] = arrivalTime;
                                 previousNodes[i] = nextNode;
                             }

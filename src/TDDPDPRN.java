@@ -37,19 +37,19 @@ public class TDDPDPRN {
                                     DominantShortestPath.getDominantShortestPaths(inputData);
                             preprocessingTime += (System.nanoTime() - time) / 1000000000.0;
 
-//                            time = System.nanoTime();
-//                            Solution solutionAnyOrder = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
-//                                    inputData.depotTimeWindowUpperBound, latenessWeight);
-//                            solutionAnyOrder.insertRequestsAnyOrder(inputData.requests);
-//                            anyOrderTime += (System.nanoTime() - time) / 1000000000.0;
-//                            anyOrderCost += solutionAnyOrder.getCost();
-//
-//                            time = System.nanoTime();
-//                            Solution solutionBestFirst = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
-//                                    inputData.depotTimeWindowUpperBound, latenessWeight);
-//                            solutionBestFirst.insertRequestsBestFirst(inputData.requests);
-//                            bestFirstTime += (System.nanoTime() - time) / 1000000000.0;
-//                            bestFirstCost += solutionBestFirst.getCost();
+                            time = System.nanoTime();
+                            Solution solutionAnyOrder = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
+                                    inputData.depotTimeWindowUpperBound, latenessWeight);
+                            solutionAnyOrder.insertRequestsAnyOrder(inputData.requests);
+                            anyOrderTime += (System.nanoTime() - time) / 1000000000.0;
+                            anyOrderCost += solutionAnyOrder.getCost();
+
+                            time = System.nanoTime();
+                            Solution solutionBestFirst = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
+                                    inputData.depotTimeWindowUpperBound, latenessWeight);
+                            solutionBestFirst.insertRequestsBestFirst(inputData.requests);
+                            bestFirstTime += (System.nanoTime() - time) / 1000000000.0;
+                            bestFirstCost += solutionBestFirst.getCost();
 
                             ++nbInstances;
                         }

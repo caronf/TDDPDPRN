@@ -9,7 +9,7 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
     }
 
     public PiecewiseArrivalTimeFunction(double[] stepTimes, double baseTravelTime, double[] speedFactors) {
-        points = new ArrayList<>();
+        points = new ArrayList<>(stepTimes.length * 2 - 1);
         points.add(new double[] {0.0, getNeighborArrivalTime(baseTravelTime, 0, stepTimes, speedFactors)});
 
         for (int i = 1; i < stepTimes.length; ++i) {
@@ -26,22 +26,22 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
             points.add(new double[] {stepTimes[i], getNeighborArrivalTime(baseTravelTime, i, stepTimes, speedFactors)});
         }
 
-        points.sort(Comparator.comparingDouble(a -> a[0]));
+        points.sort(Comparator.comparingDouble(pt -> pt[0]));
 
         // Remove duplicate points
         int i = 1;
         while (i < points.size()) {
-            if (Math.abs(points.get(i)[0] - points.get(i - 1)[0]) < 0.0001) {
-                assert Math.abs(points.get(i)[1] - points.get(i - 1)[1]) < 0.0001;
+            if (DoubleComparator.equal(points.get(i)[0], points.get(i - 1)[0])) {
+                assert DoubleComparator.equal(points.get(i)[1], points.get(i - 1)[1]);
                 points.remove(i);
             } else {
                 ++i;
             }
         }
 
-        // The travel time should be the same for the first and last point (within 0.0001)
-        assert Math.abs((points.get(0)[1] - points.get(0)[0]) -
-                (points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0])) < 0.0001;
+        // The travel time should be the same for the first and last point
+        assert DoubleComparator.equal(points.get(0)[1] - points.get(0)[0],
+                points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]);
     }
 
     public PiecewiseArrivalTimeFunction(PiecewiseArrivalTimeFunction piecewiseArrivalTimeFunction1,
@@ -70,57 +70,57 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         // Remove duplicate points
         int i = 1;
         while (i < points.size()) {
-            if (Math.abs(points.get(i)[0] - points.get(i - 1)[0]) < 0.0001) {
-                //assert Math.abs(points.get(i)[1] - points.get(i - 1)[1]) < 0.0001;
+            if (DoubleComparator.equal(points.get(i)[0], points.get(i - 1)[0])) {
+                assert DoubleComparator.equal(points.get(i)[1], points.get(i - 1)[1]);
                 points.remove(i);
             } else {
                 ++i;
             }
         }
 
-        // The travel time should be the same for the first and last point (within 0.0001)
-        assert Math.abs((points.get(0)[1] - points.get(0)[0]) -
-                (points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0])) < 0.001;
+        // The travel time should be the same for the first and last point
+        assert DoubleComparator.equal(points.get(0)[1] - points.get(0)[0],
+                points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]);
     }
 
     @Override
     public double getArrivalTime(double departureTime) {
         int k = 1;
         double departureTimeInDomain = departureTime % points.get(points.size() - 1)[0];
-        while (points.get(k)[0] < departureTimeInDomain) {
+        while (DoubleComparator.lessThan(points.get(k)[0], departureTimeInDomain)) {
             ++k;
         }
 
         // Perform a linear interpolation between points k-1 and k
-        assert points.get(k)[0] - points.get(k - 1)[0] > 0.0;
+        assert DoubleComparator.greaterThan(points.get(k)[0], points.get(k - 1)[0]);
         double arrivalTime = points.get(k-1)[1] + (departureTimeInDomain - points.get(k - 1)[0]) *
                 (points.get(k)[1] - points.get(k - 1)[1]) / (points.get(k)[0] - points.get(k - 1)[0]);
         arrivalTime += departureTime - departureTimeInDomain;
-        assert arrivalTime >= departureTime;
+        assert DoubleComparator.greaterOrEqual(arrivalTime, departureTime);
         return arrivalTime;
     }
 
     @Override
     public double getDepartureTime(double arrivalTime) {
         double arrivalTimeInCodomain = arrivalTime;
-        while (arrivalTimeInCodomain < points.get(0)[1]) {
+        while (DoubleComparator.lessThan(arrivalTimeInCodomain, points.get(0)[1])) {
             arrivalTimeInCodomain += points.get(points.size() - 1)[1] - points.get(0)[1];
         }
-        while (arrivalTimeInCodomain > points.get(points.size() - 1)[1]) {
+        while (DoubleComparator.greaterThan(arrivalTimeInCodomain, points.get(points.size() - 1)[1])) {
             arrivalTimeInCodomain -= points.get(points.size() - 1)[1] - points.get(0)[1];
         }
 
         int k = 1;
-        while (points.get(k)[1] < arrivalTimeInCodomain) {
+        while (DoubleComparator.lessThan(points.get(k)[1], arrivalTimeInCodomain)) {
             ++k;
         }
 
         // Perform a linear interpolation between points k-1 and k
-        assert points.get(k)[1] - points.get(k - 1)[1] > 0.0;
+        assert DoubleComparator.greaterThan(points.get(k)[1], points.get(k - 1)[1]);
         double departureTime = points.get(k-1)[0] + (arrivalTimeInCodomain - points.get(k - 1)[1]) *
                 (points.get(k)[0] - points.get(k - 1)[0]) / (points.get(k)[1] - points.get(k - 1)[1]);
         departureTime += arrivalTime - arrivalTimeInCodomain;
-        assert departureTime <= arrivalTime;
+        assert DoubleComparator.lessOrEqual(departureTime, arrivalTime);
         return departureTime;
     }
 
@@ -133,7 +133,7 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         // Find the final step in the speed function
         double distanceInCurrentStep = (stepTimes[currentStep + 1] - stepTimes[currentStep]) *
                 speedFactors[currentStep];
-        while(relativeTimeTravelled + distanceInCurrentStep < baseTravelTime){
+        while(DoubleComparator.lessThan(relativeTimeTravelled + distanceInCurrentStep, baseTravelTime)){
             relativeTimeTravelled += distanceInCurrentStep;
 
             if(currentStep == stepTimes.length - 2){
@@ -162,7 +162,7 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         // Find the final step in the speed function
         double distanceInCurrentStep = (stepTimes[currentStep] - stepTimes[currentStep - 1]) *
                 speedFactors[currentStep - 1];
-        while(relativeTimeTravelled + distanceInCurrentStep < baseTravelTime){
+        while(DoubleComparator.lessThan(relativeTimeTravelled + distanceInCurrentStep, baseTravelTime)){
             relativeTimeTravelled += distanceInCurrentStep;
 
             if(currentStep == 1){
