@@ -5,13 +5,14 @@ public class Route {
     RouteEnd routeEnd;
     private final ArrivalTimeFunction[][] arrivalTimeFunctions;
     private final double latenessWeight;
+    private final double vehicleCapacity;
     private double travelTime;
     private double lateness;
     private PickupRouteStop newPickupStop;
     private DeliveryRouteStop newDeliveryStop;
 
-    public Route(ArrivalTimeFunction[][] arrivalTimeFunctions,
-                 double depotTimeWindowUpperBound, double latenessWeight) {
+    public Route(ArrivalTimeFunction[][] arrivalTimeFunctions, double depotTimeWindowUpperBound,
+                 double latenessWeight, double vehicleCapacity) {
         routeStart = new RouteStart();
         routeEnd = new RouteEnd(depotTimeWindowUpperBound);
         routeStart.setNextStop(routeEnd);
@@ -23,6 +24,7 @@ public class Route {
         newDeliveryStop = null;
         this.arrivalTimeFunctions = arrivalTimeFunctions;
         this.latenessWeight = latenessWeight;
+        this.vehicleCapacity = vehicleCapacity;
     }
 
     public Route(Route otherRoute) {
@@ -44,6 +46,7 @@ public class Route {
         newDeliveryStop = null;
         arrivalTimeFunctions = otherRoute.arrivalTimeFunctions;
         latenessWeight = otherRoute.latenessWeight;
+        vehicleCapacity = otherRoute.vehicleCapacity;
     }
 
     public double getCost() {

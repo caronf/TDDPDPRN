@@ -39,14 +39,14 @@ public class TDDPDPRN {
 
                             time = System.nanoTime();
                             Solution solutionAnyOrder = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
-                                    inputData.depotTimeWindowUpperBound, latenessWeight);
+                                    inputData.depotTimeWindowUpperBound, latenessWeight, inputData.vehicleCapacity);
                             solutionAnyOrder.insertRequestsAnyOrder(inputData.requests);
                             anyOrderTime += (System.nanoTime() - time) / 1000000000.0;
                             anyOrderCost += solutionAnyOrder.getCost();
 
                             time = System.nanoTime();
                             Solution solutionBestFirst = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
-                                    inputData.depotTimeWindowUpperBound, latenessWeight);
+                                    inputData.depotTimeWindowUpperBound, latenessWeight, inputData.vehicleCapacity);
                             solutionBestFirst.insertRequestsBestFirst(inputData.requests);
                             bestFirstTime += (System.nanoTime() - time) / 1000000000.0;
                             bestFirstCost += solutionBestFirst.getCost();

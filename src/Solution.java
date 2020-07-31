@@ -11,13 +11,13 @@ public class Solution {
     private int lastRouteToTest;
 
     public Solution(int nbRoutes, ArrivalTimeFunction[][] arrivalTimeFunctions,
-                    double depotTimeWindowUpperBound, double latenessWeight) {
+                    double depotTimeWindowUpperBound, double latenessWeight, double vehicleCapacity) {
         routes = new ArrayList<>(nbRoutes);
         cost = 0.0;
         lastRouteToTest = 0;
 
         for (int i = 0; i < nbRoutes; ++i) {
-            routes.add(new Route(arrivalTimeFunctions, depotTimeWindowUpperBound, latenessWeight));
+            routes.add(new Route(arrivalTimeFunctions, depotTimeWindowUpperBound, latenessWeight, vehicleCapacity));
             cost += routes.get(i).getCost();
         }
     }
