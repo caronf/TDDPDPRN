@@ -21,6 +21,11 @@ public class RouteEnd extends RouteStop {
     }
 
     @Override
+    public double getLoadAtDeparture() {
+        return 0.0;
+    }
+
+    @Override
     public RouteEnd copy() {
         RouteEnd routeEnd = new RouteEnd(timeWindowUpperBound);
         routeEnd.setArrivalTime(getArrivalTime());

@@ -136,16 +136,16 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
                 points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]);
 
         // The arrival time should correspond to the best path for any departure time
-        for (double departureTime = 0.0;
-             DoubleComparator.lessOrEqual(departureTime, points.get(points.size() - 1)[0] * 3);
-             departureTime += ThreadLocalRandom.current().nextDouble(1.0, 20.0)) {
-            double arrivalTime1 = Double.MAX_VALUE;
-            for (int i = 0; i < paths.size(); ++i) {
-                arrivalTime1 = Math.min(arrivalTime1, arrivalTimeFunctions[i].getArrivalTime(departureTime));
-            }
-            double arrivalTime2 = getArrivalTime(departureTime);
-            assert DoubleComparator.equal(arrivalTime1, arrivalTime2);
-        }
+//        for (double departureTime = 0.0;
+//             DoubleComparator.lessOrEqual(departureTime, points.get(points.size() - 1)[0] * 3);
+//             departureTime += ThreadLocalRandom.current().nextDouble(1.0, 20.0)) {
+//            double arrivalTime1 = Double.MAX_VALUE;
+//            for (int i = 0; i < paths.size(); ++i) {
+//                arrivalTime1 = Math.min(arrivalTime1, arrivalTimeFunctions[i].getArrivalTime(departureTime));
+//            }
+//            double arrivalTime2 = getArrivalTime(departureTime);
+//            assert DoubleComparator.equal(arrivalTime1, arrivalTime2);
+//        }
     }
 
     public static ArrivalTimeFunction[][] getDominantShortestPaths(InputData inputData) {

@@ -1,5 +1,6 @@
 public abstract class RouteStop implements Cloneable {
     protected double arrivalTime;
+    protected double loadAtArrival;
     protected RouteStop previousStop;
     protected RouteStop nextStop;
 
@@ -9,6 +10,14 @@ public abstract class RouteStop implements Cloneable {
 
     public double getArrivalTime() {
         return arrivalTime;
+    }
+
+    public void setLoadAtArrival(double loadAtArrival) {
+        this.loadAtArrival = loadAtArrival;
+    }
+
+    public double getLoadAtArrival() {
+        return loadAtArrival;
     }
 
     public void setPreviousStop(RouteStop previousStop) {
@@ -38,5 +47,6 @@ public abstract class RouteStop implements Cloneable {
     public abstract int getNode();
     public abstract double getTimeWindowLowerBound();
     public abstract double getTimeWindowUpperBound();
+    public abstract double getLoadAtDeparture();
     public abstract RouteStop copy();
 }

@@ -21,6 +21,11 @@ public class PickupRouteStop extends RouteStop {
     }
 
     @Override
+    public double getLoadAtDeparture() {
+        return loadAtArrival + request.load;
+    }
+
+    @Override
     public PickupRouteStop copy() {
         PickupRouteStop pickupRouteStop = new PickupRouteStop(request);
         pickupRouteStop.setArrivalTime(arrivalTime);

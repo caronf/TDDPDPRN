@@ -50,8 +50,8 @@ public class InputData {
 
 		line = sc.nextLine().trim().split("\\s+");
 
-		nbVehicles = Integer.parseInt(line[1]);
-		vehicleCapacity  = Double.parseDouble(line[2]);
+		nbVehicles = Integer.parseInt(line[0]);
+		vehicleCapacity = Double.parseDouble(line[1]);
 
 		line = sc.nextLine().trim().split("\\s+");
 		assert Integer.parseInt(line[0]) == 0;

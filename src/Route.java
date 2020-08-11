@@ -1,5 +1,3 @@
-import java.util.ArrayList;
-
 public class Route {
     RouteStart routeStart;
     RouteEnd routeEnd;
@@ -77,9 +75,14 @@ public class Route {
         Route tempRoute = new Route(this);
         tempRoute.insertRequest(request);
 
+        // The first insertion should always be feasible unless the request's load
+        // is greater than the vehicle capacity in which case the instance is infeasible
+        assert tempRoute.isFeasible();
+
         Route bestRoute = new Route(tempRoute);
+
         while (tempRoute.cycleInsertionPoints()) {
-            if (tempRoute.getCost() < bestRoute.getCost()) {
+            if (tempRoute.isFeasible() && DoubleComparator.lessThan(tempRoute.getCost(), bestRoute.getCost())) {
                 bestRoute = new Route(tempRoute);
             }
         }
@@ -96,7 +99,7 @@ public class Route {
         newPickupStop.setNextStop(newDeliveryStop);
         newDeliveryStop.setPreviousStop(newPickupStop);
 
-        updateArrivalTimes(newPickupStop);
+        updateStops(newPickupStop);
     }
 
     private boolean cycleInsertionPoints() {
@@ -138,20 +141,35 @@ public class Route {
             updateFromStop = newDeliveryStop.getPreviousStop();
         }
 
-        updateArrivalTimes(updateFromStop);
+        updateStops(updateFromStop);
         return true;
     }
 
-    private void updateArrivalTimes(RouteStop updateFromStop) {
+    private void updateStops(RouteStop updateFromStop) {
         RouteStop currentStop = updateFromStop.getPreviousStop();
         while (currentStop != routeEnd) {
             RouteStop nextStop = currentStop.getNextStop();
             nextStop.setArrivalTime(arrivalTimeFunctions[currentStop.getNode()][nextStop.getNode()].getArrivalTime(
                     currentStop.getDepartureTime()));
+            nextStop.setLoadAtArrival(currentStop.getLoadAtDeparture());
             currentStop = nextStop;
         }
 
+        assert DoubleComparator.equal(routeEnd.getLoadAtArrival(), 0.0);
+
         travelTime = -1.0;
         lateness = -1.0;
+    }
+
+    private boolean isFeasible() {
+        RouteStop currentStop = routeStart;
+        while (currentStop != routeEnd) {
+            if (DoubleComparator.greaterThan(currentStop.getLoadAtArrival(), vehicleCapacity)) {
+                return false;
+            }
+            currentStop = currentStop.getNextStop();
+        }
+
+        return true;
     }
 }

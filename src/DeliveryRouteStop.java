@@ -21,6 +21,11 @@ public class DeliveryRouteStop extends RouteStop {
     }
 
     @Override
+    public double getLoadAtDeparture() {
+        return loadAtArrival - request.load;
+    }
+
+    @Override
     public DeliveryRouteStop copy() {
         DeliveryRouteStop deliveryRouteStop = new DeliveryRouteStop(request);
         deliveryRouteStop.setArrivalTime(arrivalTime);
