@@ -82,10 +82,12 @@ public class InputData {
 			if (timeWindowUpperBound1 < timeWindowUpperBound2 ||
 					timeWindowUpperBound1 == timeWindowUpperBound2 && timeWindowLowerBound1 <= timeWindowLowerBound2) {
 				requests.add(new Request(node1, node2, load,
-						timeWindowLowerBound1, timeWindowUpperBound1, timeWindowLowerBound2, timeWindowUpperBound2));
+						timeWindowLowerBound1, timeWindowUpperBound1, 0.0,
+						timeWindowLowerBound2, timeWindowUpperBound2, 0.0));
 			} else {
 				requests.add(new Request(node2, node1, load,
-						timeWindowLowerBound2, timeWindowUpperBound2, timeWindowLowerBound1, timeWindowUpperBound1));
+						timeWindowLowerBound2, timeWindowUpperBound2, 0.0,
+						timeWindowLowerBound1, timeWindowUpperBound1, 0.0));
 			}
 		}
 		sc.close();

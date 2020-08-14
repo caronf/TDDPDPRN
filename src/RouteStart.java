@@ -1,6 +1,7 @@
 public class RouteStart extends RouteStop {
     public RouteStart() {
         arrivalTime = 0.0;
+        departureTime = 0.0;
         loadAtArrival = 0.0;
     }
 
@@ -25,7 +26,14 @@ public class RouteStart extends RouteStop {
     }
 
     @Override
+    public double getServiceTime() {
+        return 0.0;
+    }
+
+    @Override
     public RouteStart copy() {
-        return new RouteStart();
+        RouteStart routeStart = new RouteStart();
+        routeStart.setDepartureTime(departureTime);
+        return routeStart;
     }
 }

@@ -26,9 +26,15 @@ public class DeliveryRouteStop extends RouteStop {
     }
 
     @Override
+    public double getServiceTime() {
+        return request.deliveryServiceTime;
+    }
+
+    @Override
     public DeliveryRouteStop copy() {
         DeliveryRouteStop deliveryRouteStop = new DeliveryRouteStop(request);
         deliveryRouteStop.setArrivalTime(arrivalTime);
+        deliveryRouteStop.setDepartureTime(departureTime);
         return deliveryRouteStop;
     }
 }

@@ -26,7 +26,7 @@ public class Route {
     }
 
     public Route(Route otherRoute) {
-        routeStart = new RouteStart();
+        routeStart = otherRoute.routeStart.copy();
         RouteStop currentStop = routeStart;
         RouteStop stopToCopy = otherRoute.routeStart.getNextStop();
         while (stopToCopy != null) {
@@ -36,6 +36,8 @@ public class Route {
             currentStop = newStop;
             stopToCopy = stopToCopy.getNextStop();
         }
+
+        assert currentStop instanceof RouteEnd;
         routeEnd = (RouteEnd) currentStop;
 
         travelTime = otherRoute.travelTime;
@@ -149,9 +151,14 @@ public class Route {
         RouteStop currentStop = updateFromStop.getPreviousStop();
         while (currentStop != routeEnd) {
             RouteStop nextStop = currentStop.getNextStop();
+
+            currentStop.setDepartureTime(Math.max(currentStop.getArrivalTime() + currentStop.getServiceTime(),
+                    arrivalTimeFunctions[currentStop.getNode()][nextStop.getNode()].getDepartureTime(
+                            nextStop.getTimeWindowLowerBound())));
             nextStop.setArrivalTime(arrivalTimeFunctions[currentStop.getNode()][nextStop.getNode()].getArrivalTime(
                     currentStop.getDepartureTime()));
             nextStop.setLoadAtArrival(currentStop.getLoadAtDeparture());
+
             currentStop = nextStop;
         }
 
