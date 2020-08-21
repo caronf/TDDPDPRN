@@ -35,6 +35,7 @@ public class RouteEnd extends RouteStop {
         RouteEnd routeEnd = new RouteEnd(timeWindowUpperBound);
         routeEnd.setArrivalTime(getArrivalTime());
         routeEnd.setDepartureTime(getDepartureTime());
+        routeEnd.setLoadAtArrival(loadAtArrival);
         return routeEnd;
     }
 }

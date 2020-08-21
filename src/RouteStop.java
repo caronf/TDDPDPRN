@@ -49,6 +49,10 @@ public abstract class RouteStop implements Cloneable {
         return Math.max(0, arrivalTime - getTimeWindowUpperBound());
     }
 
+    public boolean servesRequest(Request request) {
+        return false;
+    }
+
     public abstract int getNode();
     public abstract double getTimeWindowLowerBound();
     public abstract double getTimeWindowUpperBound();

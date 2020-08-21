@@ -104,6 +104,26 @@ public class Route {
         updateStops(newPickupStop);
     }
 
+    public void removeRequest(Request request) {
+        RouteStop currentStop = routeStart.getNextStop();
+        RouteStop updateFromStop = null;
+        while (currentStop != routeEnd) {
+            if (currentStop.servesRequest(request)) {
+                // Remove current stop
+                currentStop.getPreviousStop().setNextStop(currentStop.getNextStop());
+                currentStop.getNextStop().setPreviousStop(currentStop.getPreviousStop());
+                if (updateFromStop == null) {
+                    updateFromStop = currentStop.getNextStop();
+                }
+            }
+            currentStop = currentStop.getNextStop();
+        }
+
+        if (updateFromStop != null) {
+            updateStops(updateFromStop);
+        }
+    }
+
     private boolean cycleInsertionPoints() {
         RouteStop updateFromStop;
         if (newDeliveryStop.getNextStop() == routeEnd) {

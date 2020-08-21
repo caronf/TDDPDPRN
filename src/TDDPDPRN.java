@@ -8,13 +8,18 @@ public class TDDPDPRN {
         final double[] arrayCorr = new double[] {0.02, 0.5, 0.98};
         final int[] indices = new int[] {1, 2, 3, 4, 5};
         final String[] timeWindowTypes = new String[] {"NTW", "WTW"};
+        final TabuSearch tabuSearch = new TabuSearch();
 
         double inputDataReadTime = 0.0;
         double preprocessingTime = 0.0;
         double anyOrderTime = 0.0;
+        double anyOrderAfterDescentTime = 0.0;
         double bestFirstTime = 0.0;
+        double bestFirstAfterDescentTime = 0.0;
         double anyOrderCost = 0.0;
+        double anyOrderAfterDescentCost = 0.0;
         double bestFirstCost = 0.0;
+        double bestFirstAfterDescentCost = 0.0;
         int nbInstances = 0;
 
         for (int nbNodes : arrayNbNodes) {
@@ -45,11 +50,23 @@ public class TDDPDPRN {
                             anyOrderCost += solutionAnyOrder.getCost();
 
                             time = System.nanoTime();
+                            Solution solutionAnyOrderAfterDescent = tabuSearch.Apply(solutionAnyOrder,
+                                    inputData.requests);
+                            anyOrderAfterDescentTime += (System.nanoTime() - time) / 1000000000.0;
+                            anyOrderAfterDescentCost += solutionAnyOrderAfterDescent.getCost();
+
+                            time = System.nanoTime();
                             Solution solutionBestFirst = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
                                     inputData.depotTimeWindowUpperBound, latenessWeight, inputData.vehicleCapacity);
                             solutionBestFirst.insertRequestsBestFirst(inputData.requests);
                             bestFirstTime += (System.nanoTime() - time) / 1000000000.0;
                             bestFirstCost += solutionBestFirst.getCost();
+
+                            time = System.nanoTime();
+                            Solution solutionBestFirstAfterDescent = tabuSearch.Apply(solutionBestFirst,
+                                    inputData.requests);
+                            bestFirstAfterDescentTime += (System.nanoTime() - time) / 1000000000.0;
+                            bestFirstAfterDescentCost += solutionBestFirstAfterDescent.getCost();
 
                             ++nbInstances;
                         }
@@ -61,15 +78,26 @@ public class TDDPDPRN {
         inputDataReadTime /= nbInstances;
         preprocessingTime /= nbInstances;
         anyOrderTime /= nbInstances;
+        anyOrderAfterDescentTime /= nbInstances;
         bestFirstTime /= nbInstances;
+        bestFirstAfterDescentTime /= nbInstances;
         anyOrderCost /= nbInstances;
+        anyOrderAfterDescentCost /= nbInstances;
         bestFirstCost /= nbInstances;
+        bestFirstAfterDescentCost /= nbInstances;
+
+        double averageNbIterations = tabuSearch.totalNbIterations / (nbInstances * 2.0);
 
         System.out.println(String.format("inputDataReadTime = %f", inputDataReadTime));
         System.out.println(String.format("preprocessingTime = %f", preprocessingTime));
         System.out.println(String.format("anyOrderTime = %f", anyOrderTime));
+        System.out.println(String.format("anyOrderAfterDescentTime = %f", anyOrderAfterDescentTime));
         System.out.println(String.format("bestFirstTime = %f", bestFirstTime));
+        System.out.println(String.format("bestFirstAfterDescentTime = %f", bestFirstAfterDescentTime));
         System.out.println(String.format("anyOrderCost = %f", anyOrderCost));
+        System.out.println(String.format("anyOrderAfterDescentCost = %f", anyOrderAfterDescentCost));
         System.out.println(String.format("bestFirstCost = %f", bestFirstCost));
+        System.out.println(String.format("bestFirstAfterDescentCost = %f", bestFirstAfterDescentCost));
+        System.out.println(String.format("averageNbIterations = %f", averageNbIterations));
     }
 }

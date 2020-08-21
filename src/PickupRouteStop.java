@@ -6,6 +6,11 @@ public class PickupRouteStop extends RouteStop {
     }
 
     @Override
+    public boolean servesRequest(Request request) {
+        return this.request == request;
+    }
+
+    @Override
     public int getNode() {
         return request.pickupNode;
     }
@@ -35,6 +40,7 @@ public class PickupRouteStop extends RouteStop {
         PickupRouteStop pickupRouteStop = new PickupRouteStop(request);
         pickupRouteStop.setArrivalTime(arrivalTime);
         pickupRouteStop.setDepartureTime(departureTime);
+        pickupRouteStop.setLoadAtArrival(loadAtArrival);
         return pickupRouteStop;
     }
 }
