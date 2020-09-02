@@ -4,10 +4,10 @@ import java.util.Collection;
 public class Solution {
     private final ArrayList<Request> requests;
     private final ArrayList<Route> routes;
+    private final int maxNbRoutes;
     private double travelTime;
     private double lateness;
     private double cost;
-    private int maxNbRoutes;
 
     public Solution(int maxNbRoutes, ArrivalTimeFunction[][] arrivalTimeFunctions,
                     double depotTimeWindowUpperBound, double latenessWeight, double vehicleCapacity) {
@@ -15,10 +15,10 @@ public class Solution {
         routes = new ArrayList<>();
         routes.add(new Route(arrivalTimeFunctions, depotTimeWindowUpperBound, latenessWeight, vehicleCapacity));
 
+        this.maxNbRoutes = maxNbRoutes;
         travelTime = routes.get(0).getTravelTime();
         lateness = routes.get(0).getLateness();
         cost = routes.get(0).getCost();
-        this.maxNbRoutes = maxNbRoutes;
     }
 
     public Solution(Solution otherSolution) {
@@ -28,10 +28,10 @@ public class Solution {
             routes.add(new Route(route));
         }
 
+        maxNbRoutes = otherSolution.maxNbRoutes;
         travelTime = otherSolution.travelTime;
         lateness = otherSolution.lateness;
         cost = otherSolution.cost;
-        maxNbRoutes = otherSolution.maxNbRoutes;
     }
 
     public void insertRequest(Request request) {
@@ -41,11 +41,13 @@ public class Solution {
 
         for (int i = 0; i < routes.size(); ++i) {
             Route newRoute = routes.get(i).getRouteAfterInsertion(request);
-            double costIncrease = newRoute.getCost() - routes.get(i).getCost();
-            if (costIncrease < bestCostIncrease) {
-                bestCostIncrease = costIncrease;
-                bestRoute = newRoute;
-                bestRouteIndex = i;
+            if (newRoute != null) {
+                double costIncrease = newRoute.getCost() - routes.get(i).getCost();
+                if (costIncrease < bestCostIncrease) {
+                    bestCostIncrease = costIncrease;
+                    bestRoute = newRoute;
+                    bestRouteIndex = i;
+                }
             }
         }
 
@@ -83,7 +85,8 @@ public class Solution {
 
             for (Route route : routes) {
                 Route newRoute = route.getRouteAfterInsertion(request);
-                costIncreasesForRequest.add(newRoute.getCost() - route.getCost());
+                costIncreasesForRequest.add(newRoute == null ? Double.MAX_VALUE :
+                        newRoute.getCost() - route.getCost());
                 newRoutesForRequest.add(newRoute);
             }
 
@@ -107,6 +110,7 @@ public class Solution {
             }
 
             // Perform the insertion with minimum cost increase
+            assert routes.get(bestRouteIndex) != null;
             travelTime += newRoutesMatrix.get(bestRequestIndex).get(bestRouteIndex).getTravelTime() -
                     routes.get(bestRouteIndex).getTravelTime();
             lateness += newRoutesMatrix.get(bestRequestIndex).get(bestRouteIndex).getLateness() -
@@ -129,14 +133,14 @@ public class Solution {
             // Update the insertion cost of every remaining request for this route
             for (int i = 0; i < requestsToInsert.size(); ++i) {
                 Route newRoute = routes.get(bestRouteIndex).getRouteAfterInsertion(requestsToInsert.get(i));
+                double costIncrease = newRoute == null ? Double.MAX_VALUE :
+                        newRoute.getCost() - routes.get(bestRouteIndex).getCost();
                 if (addRoute) {
-                    costIncreaseMatrix.get(i).add(bestRouteIndex,
-                            newRoute.getCost() - routes.get(bestRouteIndex).getCost());
+                    costIncreaseMatrix.get(i).add(bestRouteIndex, costIncrease);
                     newRoutesMatrix.get(i).add(bestRouteIndex, newRoute);
                 }
                 else {
-                    costIncreaseMatrix.get(i).set(bestRouteIndex,
-                            newRoute.getCost() - routes.get(bestRouteIndex).getCost());
+                    costIncreaseMatrix.get(i).set(bestRouteIndex, costIncrease);
                     newRoutesMatrix.get(i).set(bestRouteIndex, newRoute);
                 }
             }

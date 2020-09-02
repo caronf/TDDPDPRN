@@ -1,49 +1,48 @@
+import java.util.ArrayList;
+
 public class Route {
-    RouteStart routeStart;
-    RouteEnd routeEnd;
+    private final ArrayList<RouteStop> routeStops;
     private final ArrivalTimeFunction[][] arrivalTimeFunctions;
     private final double latenessWeight;
     private final double vehicleCapacity;
     private double travelTime;
     private double lateness;
-    private PickupRouteStop newPickupStop;
-    private DeliveryRouteStop newDeliveryStop;
+    private int newRequestPickupIndex;
+    private int newRequestDeliveryIndex;
+
+    // Previous insertion points are forbidden to avoid reinserting at the same place.
+    private int previousPickupIndex;
+    private int previousDeliveryIndex;
 
     public Route(ArrivalTimeFunction[][] arrivalTimeFunctions, double depotTimeWindowUpperBound,
                  double latenessWeight, double vehicleCapacity) {
-        routeStart = new RouteStart();
-        routeEnd = new RouteEnd(depotTimeWindowUpperBound);
-        routeStart.setNextStop(routeEnd);
-        routeEnd.setPreviousStop(routeStart);
+        routeStops = new ArrayList<>();
+        routeStops.add(new RouteStart());
+        routeStops.add(new RouteEnd(depotTimeWindowUpperBound));
 
         travelTime = -1.0;
         lateness = -1.0;
-        newPickupStop = null;
-        newDeliveryStop = null;
+        newRequestPickupIndex = -1;
+        newRequestDeliveryIndex = -1;
+        previousPickupIndex = -1;
+        previousDeliveryIndex = -1;
         this.arrivalTimeFunctions = arrivalTimeFunctions;
         this.latenessWeight = latenessWeight;
         this.vehicleCapacity = vehicleCapacity;
     }
 
     public Route(Route otherRoute) {
-        routeStart = otherRoute.routeStart.copy();
-        RouteStop currentStop = routeStart;
-        RouteStop stopToCopy = otherRoute.routeStart.getNextStop();
-        while (stopToCopy != null) {
-            RouteStop newStop = stopToCopy.copy();
-            currentStop.setNextStop(newStop);
-            newStop.setPreviousStop(currentStop);
-            currentStop = newStop;
-            stopToCopy = stopToCopy.getNextStop();
+        routeStops = new ArrayList<>(otherRoute.routeStops.size());
+        for (RouteStop routeStop : otherRoute.routeStops) {
+            routeStops.add(routeStop.copy());
         }
-
-        assert currentStop instanceof RouteEnd;
-        routeEnd = (RouteEnd) currentStop;
 
         travelTime = otherRoute.travelTime;
         lateness = otherRoute.lateness;
-        newPickupStop = null;
-        newDeliveryStop = null;
+        newRequestPickupIndex = -1;
+        newRequestDeliveryIndex = -1;
+        previousPickupIndex = otherRoute.previousPickupIndex;
+        previousDeliveryIndex = otherRoute.previousDeliveryIndex;
         arrivalTimeFunctions = otherRoute.arrivalTimeFunctions;
         latenessWeight = otherRoute.latenessWeight;
         vehicleCapacity = otherRoute.vehicleCapacity;
@@ -51,14 +50,11 @@ public class Route {
 
     public double getCost() {
         if (travelTime < 0.0 || lateness < 0.0) {
-            RouteStop currentStop = routeStart;
             travelTime = 0.0;
-            lateness = currentStop.getLateness();
-            while (currentStop != routeEnd) {
-                RouteStop nextStop = currentStop.getNextStop();
-                travelTime += nextStop.getArrivalTime() - currentStop.getDepartureTime();
-                lateness += nextStop.getLateness();
-                currentStop = nextStop;
+            lateness = routeStops.get(0).getLateness();
+            for (int i = 1; i < routeStops.size(); ++i) {
+                travelTime += routeStops.get(i).getArrivalTime() - routeStops.get(i - 1).getDepartureTime();
+                lateness += routeStops.get(i).getLateness();
             }
         }
 
@@ -74,6 +70,10 @@ public class Route {
     }
 
     public Route getRouteAfterInsertion(Request request) {
+        if (previousPickupIndex == 1 && previousDeliveryIndex == 2 && routeStops.size() == 2) {
+            return null;
+        }
+
         Route tempRoute = new Route(this);
         tempRoute.insertRequest(request);
 
@@ -89,112 +89,102 @@ public class Route {
             }
         }
 
+        previousPickupIndex = -1;
+        previousDeliveryIndex = -1;
         return bestRoute;
     }
 
     private void insertRequest(Request request) {
-        newPickupStop = new PickupRouteStop(request);
-        newDeliveryStop = new DeliveryRouteStop(request);
-        newDeliveryStop.setNextStop(routeStart.getNextStop());
-        routeStart.setNextStop(newPickupStop);
-        newPickupStop.setPreviousStop(routeStart);
-        newPickupStop.setNextStop(newDeliveryStop);
-        newDeliveryStop.setPreviousStop(newPickupStop);
+        newRequestPickupIndex = 1;
+        if (previousPickupIndex == 1 && newRequestDeliveryIndex == 2) {
+            newRequestDeliveryIndex = 3;
+        } else {
+            newRequestDeliveryIndex = 2;
+        }
 
-        updateStops(newPickupStop);
+        routeStops.add(newRequestPickupIndex, new PickupRouteStop(request));
+        routeStops.add(newRequestDeliveryIndex, new DeliveryRouteStop(request));
+
+        updateStops(newRequestPickupIndex);
     }
 
     public void removeRequest(Request request) {
-        RouteStop currentStop = routeStart.getNextStop();
-        RouteStop updateFromStop = null;
-        while (currentStop != routeEnd) {
-            if (currentStop.servesRequest(request)) {
-                // Remove current stop
-                currentStop.getPreviousStop().setNextStop(currentStop.getNextStop());
-                currentStop.getNextStop().setPreviousStop(currentStop.getPreviousStop());
-                if (updateFromStop == null) {
-                    updateFromStop = currentStop.getNextStop();
+        previousPickupIndex = -1;
+        previousDeliveryIndex = -1;
+
+        for (int i = 1; i < routeStops.size() - 1; ++i) {
+            if (routeStops.get(i).servesRequest(request)) {
+                if (previousPickupIndex == -1) {
+                    previousPickupIndex = i;
+                } else {
+                    previousDeliveryIndex = i;
+                    routeStops.remove(previousDeliveryIndex);
+                    routeStops.remove(previousPickupIndex);
+                    updateStops(previousPickupIndex);
+                    break;
                 }
             }
-            currentStop = currentStop.getNextStop();
-        }
-
-        if (updateFromStop != null) {
-            updateStops(updateFromStop);
         }
     }
 
     private boolean cycleInsertionPoints() {
-        RouteStop updateFromStop;
-        if (newDeliveryStop.getNextStop() == routeEnd) {
-            if (newPickupStop.getNextStop() == newDeliveryStop)
-            {
-                return false;
+        int updateFromIndex = Integer.MAX_VALUE;
+
+        do {
+            if (newRequestDeliveryIndex == routeStops.size() - 2) {
+                if (newRequestPickupIndex == routeStops.size() - 3) {
+                    return false;
+                }
+
+                // Move the pickup point forward in the route
+                RouteStop pickupRouteStop = routeStops.get(newRequestPickupIndex);
+                routeStops.set(newRequestPickupIndex, routeStops.get(newRequestPickupIndex + 1));
+                ++newRequestPickupIndex;
+                routeStops.set(newRequestPickupIndex, pickupRouteStop);
+
+                // Reset the delivery point to be right after the pickup
+                newRequestDeliveryIndex = newRequestPickupIndex + 1;
+                routeStops.add(newRequestDeliveryIndex, routeStops.remove(routeStops.size() - 2));
+
+                updateFromIndex = Math.min(updateFromIndex, newRequestPickupIndex - 1);
+            } else {
+                // Move the delivery after the following stop
+                RouteStop deliveryRouteStop = routeStops.get(newRequestDeliveryIndex);
+                routeStops.set(newRequestDeliveryIndex, routeStops.get(newRequestDeliveryIndex + 1));
+                ++newRequestDeliveryIndex;
+                routeStops.set(newRequestDeliveryIndex, deliveryRouteStop);
+
+                updateFromIndex = Math.min(updateFromIndex, newRequestDeliveryIndex - 1);
             }
+        } while (previousPickupIndex == newRequestPickupIndex && previousDeliveryIndex == newRequestDeliveryIndex);
 
-            // Move the pickup after the following stop and reset the delivery right after the pickup
-
-            newPickupStop.getPreviousStop().setNextStop(newPickupStop.getNextStop());
-            newPickupStop.getNextStop().setPreviousStop(newPickupStop.getPreviousStop());
-
-            newDeliveryStop.getPreviousStop().setNextStop(newDeliveryStop.getNextStop());
-            newDeliveryStop.getNextStop().setPreviousStop(newDeliveryStop.getPreviousStop());
-
-            newDeliveryStop.setNextStop(newPickupStop.getNextStop().getNextStop());
-            newPickupStop.getNextStop().getNextStop().setPreviousStop(newDeliveryStop);
-            newPickupStop.setPreviousStop(newPickupStop.getNextStop());
-            newPickupStop.getNextStop().setNextStop(newPickupStop);
-            newPickupStop.setNextStop(newDeliveryStop);
-            newDeliveryStop.setPreviousStop(newPickupStop);
-
-            updateFromStop = newPickupStop.getPreviousStop();
-        }
-        else {
-            // Move the delivery after the following stop
-
-            newDeliveryStop.getPreviousStop().setNextStop(newDeliveryStop.getNextStop());
-            newDeliveryStop.getNextStop().setPreviousStop(newDeliveryStop.getPreviousStop());
-
-            newDeliveryStop.setPreviousStop(newDeliveryStop.getNextStop());
-            newDeliveryStop.getNextStop().getNextStop().setPreviousStop(newDeliveryStop);
-            newDeliveryStop.setNextStop(newDeliveryStop.getNextStop().getNextStop());
-            newDeliveryStop.getPreviousStop().setNextStop(newDeliveryStop);
-
-            updateFromStop = newDeliveryStop.getPreviousStop();
-        }
-
-        updateStops(updateFromStop);
+        updateStops(updateFromIndex);
         return true;
     }
 
-    private void updateStops(RouteStop updateFromStop) {
-        RouteStop currentStop = updateFromStop.getPreviousStop();
-        while (currentStop != routeEnd) {
-            RouteStop nextStop = currentStop.getNextStop();
+    private void updateStops(int updateFromIndex) {
+        assert updateFromIndex > 0;
 
-            currentStop.setDepartureTime(Math.max(currentStop.getArrivalTime() + currentStop.getServiceTime(),
-                    arrivalTimeFunctions[currentStop.getNode()][nextStop.getNode()].getDepartureTime(
-                            nextStop.getTimeWindowLowerBound())));
-            nextStop.setArrivalTime(arrivalTimeFunctions[currentStop.getNode()][nextStop.getNode()].getArrivalTime(
-                    currentStop.getDepartureTime()));
-            nextStop.setLoadAtArrival(currentStop.getLoadAtDeparture());
-
-            currentStop = nextStop;
+        for (int i = updateFromIndex; i < routeStops.size(); ++i) {
+            routeStops.get(i-1).setDepartureTime(Math.max(routeStops.get(i-1).getArrivalTime() + routeStops.get(i-1).getServiceTime(),
+                    arrivalTimeFunctions[routeStops.get(i-1).getNode()][routeStops.get(i).getNode()].getDepartureTime(
+                            routeStops.get(i).getTimeWindowLowerBound())));
+            routeStops.get(i).setArrivalTime(arrivalTimeFunctions[routeStops.get(i-1).getNode()][routeStops.get(i).getNode()].getArrivalTime(
+                    routeStops.get(i-1).getDepartureTime()));
+            routeStops.get(i).setLoadAtArrival(routeStops.get(i-1).getLoadAtDeparture());
         }
 
-        assert DoubleComparator.equal(routeEnd.getLoadAtArrival(), 0.0);
+        assert DoubleComparator.equal(routeStops.get(routeStops.size() - 1).getLoadAtArrival(), 0.0);
 
         travelTime = -1.0;
         lateness = -1.0;
     }
 
     private boolean isFeasible() {
-        RouteStop currentStop = routeStart;
-        while (currentStop != routeEnd) {
-            if (DoubleComparator.greaterThan(currentStop.getLoadAtArrival(), vehicleCapacity)) {
+        for (RouteStop routeStop : routeStops) {
+            if (DoubleComparator.greaterThan(routeStop.getLoadAtArrival(), vehicleCapacity)) {
                 return false;
             }
-            currentStop = currentStop.getNextStop();
         }
 
         return true;
