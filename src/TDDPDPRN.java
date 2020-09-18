@@ -8,8 +8,7 @@ public class TDDPDPRN {
         final double[] arrayCorr = new double[] {0.02, 0.5, 0.98};
         final int[] indices = new int[] {1, 2, 3, 4, 5};
         final String[] timeWindowTypes = new String[] {"NTW", "WTW"};
-        final TabuSearch localDescent = new TabuSearch(1, false);
-        final TabuSearch tabuSearch = new TabuSearch(10, true);
+        final TabuSearch localDescent = new TabuSearch(1, 0);
 
         double inputDataReadTime = 0.0;
         double preprocessingTime = 0.0;
@@ -21,10 +20,15 @@ public class TDDPDPRN {
         double afterTabuCost = 0.0;
         double descentImprovement = 0.0;
         double tabuSearchImprovement = 0.0;
+        double maxTabuSearchImprovement = 0.0;
         int nbInstances = 0;
 
         for (int nbNodes : arrayNbNodes) {
             for (int nbClients : arrayNbClients) {
+                TabuSearch tabuSearch = new TabuSearch(
+                        nbClients * 10,
+                        nbClients * 3 / 8);
+
                 for (double corr : arrayCorr) {
                     for (int index : indices) {
                         for (String timeWindowType : timeWindowTypes) {
@@ -57,12 +61,17 @@ public class TDDPDPRN {
                             descentImprovement += 1.0 -
                                     solutionAfterDescent.getCost() / initialSolution.getCost();
 
+
                             time = System.nanoTime();
                             Solution solutionAfterTabu = tabuSearch.Apply(solutionAfterDescent, inputData.requests);
                             tabuSearchTime += (System.nanoTime() - time) / 1000000000.0;
                             afterTabuCost += solutionAfterTabu.getCost();
-                            tabuSearchImprovement += 1.0 -
-                                    solutionAfterTabu.getCost() / solutionAfterDescent.getCost();
+
+                            double improvement = 1.0 - solutionAfterTabu.getCost() / solutionAfterDescent.getCost();
+                            tabuSearchImprovement += improvement;
+                            if (improvement > maxTabuSearchImprovement) {
+                                maxTabuSearchImprovement = improvement;
+                            }
 
                             ++nbInstances;
                         }
@@ -92,9 +101,6 @@ public class TDDPDPRN {
         System.out.println(String.format("afterTabuCost = %f", afterTabuCost));
         System.out.println(String.format("descentImprovement = %f", descentImprovement));
         System.out.println(String.format("tabuSearchImprovement = %f", tabuSearchImprovement));
-        System.out.println(String.format("average number of iterations for local descent = %d",
-                localDescent.totalNbIterations / nbInstances));
-        System.out.println(String.format("average number of iterations for tabu search = %d",
-                tabuSearch.totalNbIterations / nbInstances));
+        System.out.println(String.format("maxTabuSearchImprovement = %f", maxTabuSearchImprovement));
     }
 }

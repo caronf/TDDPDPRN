@@ -71,6 +71,8 @@ public class Route {
 
     public Route getRouteAfterInsertion(Request request) {
         if (previousPickupIndex == 1 && previousDeliveryIndex == 2 && routeStops.size() == 2) {
+            previousPickupIndex = -1;
+            previousDeliveryIndex = -1;
             return null;
         }
 
@@ -91,6 +93,8 @@ public class Route {
 
         previousPickupIndex = -1;
         previousDeliveryIndex = -1;
+        bestRoute.previousPickupIndex = -1;
+        bestRoute.previousDeliveryIndex = -1;
         return bestRoute;
     }
 
@@ -109,8 +113,8 @@ public class Route {
     }
 
     public void removeRequest(Request request) {
-        previousPickupIndex = -1;
-        previousDeliveryIndex = -1;
+        assert previousPickupIndex == -1;
+        assert previousDeliveryIndex == -1;
 
         for (int i = 1; i < routeStops.size() - 1; ++i) {
             if (routeStops.get(i).servesRequest(request)) {

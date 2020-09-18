@@ -1,14 +1,12 @@
 import java.util.List;
 
 public class TabuSearch {
-    public int totalNbIterations;
-    private int noImprovementStoppingCriteria;
-    private boolean useTabus;
+    private final int noImprovementStoppingCriteria;
+    private final int tabuTenure;
 
-    public TabuSearch(int noImprovementStoppingCriteria, boolean useTabus) {
-        totalNbIterations = 0;
+    public TabuSearch(int noImprovementStoppingCriteria, int tabuTenure) {
         this.noImprovementStoppingCriteria = noImprovementStoppingCriteria;
-        this.useTabus = useTabus;
+        this.tabuTenure = tabuTenure;
     }
 
     public Solution Apply(Solution startingSolution, List<Request> requests) {
@@ -28,30 +26,31 @@ public class TabuSearch {
 
             // Search for the best solution in the neighborhood
             for (int i = 0; i < requests.size(); ++i) {
-                if (tabuCounters[i] > 0) {
-                    --tabuCounters[i];
-                } else {
-                    Solution temporarySolution = new Solution(currentSolution);
-                    temporarySolution.removeRequest(requests.get(i));
-                    temporarySolution.insertRequest(requests.get(i));
+                Solution temporarySolution = new Solution(currentSolution);
+                temporarySolution.removeRequest(requests.get(i));
+                temporarySolution.insertRequest(requests.get(i));
 
-                    if (nextSolution == null ||
-                            DoubleComparator.lessThan(temporarySolution.getCost(), nextSolution.getCost())) {
+                if (nextSolution == null ||
+                        DoubleComparator.lessThan(temporarySolution.getCost(), nextSolution.getCost())) {
+                    if (tabuCounters[i] == 0) {
                         nextSolution = temporarySolution;
                         tabuIndex = i;
-                        if (DoubleComparator.lessThan(temporarySolution.getCost(), bestSolution.getCost())) {
-                            bestSolution = temporarySolution;
-                            noImprovementCounter = 0;
-                        }
                     }
+
+                    if (DoubleComparator.lessThan(temporarySolution.getCost(), bestSolution.getCost())) {
+                        nextSolution = temporarySolution;
+                        tabuIndex = i;
+                        bestSolution = temporarySolution;
+                        noImprovementCounter = 0;
+                    }
+                }
+
+                if (tabuCounters[i] > 0) {
+                    --tabuCounters[i];
                 }
             }
 
-            if (useTabus) {
-                tabuCounters[tabuIndex] += requests.size() / 2;
-            }
-
-            ++totalNbIterations;
+            tabuCounters[tabuIndex] = tabuTenure;
         } while (noImprovementCounter < noImprovementStoppingCriteria);
 
         return bestSolution;
