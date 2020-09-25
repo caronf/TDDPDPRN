@@ -113,8 +113,8 @@ public class Route {
     }
 
     public void removeRequest(Request request) {
-        assert previousPickupIndex == -1;
-        assert previousDeliveryIndex == -1;
+        previousPickupIndex = -1;
+        previousDeliveryIndex = -1;
 
         for (int i = 1; i < routeStops.size() - 1; ++i) {
             if (routeStops.get(i).servesRequest(request)) {
