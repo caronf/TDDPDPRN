@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.Random;
 
 public class Route {
     private final ArrayList<RouteStop> routeStops;
@@ -69,6 +70,29 @@ public class Route {
         return lateness;
     }
 
+    public Route getRouteAfterRandomInsertion(Request request, Random random) {
+        Route tempRoute;
+
+        do {
+            tempRoute = new Route(this);
+            int pickupIndex = random.nextInt(routeStops.size() - 1) + 1;
+            int deliveryIndex = random.nextInt(routeStops.size() - 1) +1;
+            if (deliveryIndex < pickupIndex) {
+                int i = pickupIndex;
+                pickupIndex = deliveryIndex;
+                deliveryIndex = i;
+            }
+
+            tempRoute.routeStops.add(pickupIndex, new PickupRouteStop(request));
+            ++deliveryIndex;
+            tempRoute.routeStops.add(deliveryIndex, new DeliveryRouteStop(request));
+
+            tempRoute.updateStops(pickupIndex);
+        } while (!tempRoute.isFeasible());
+
+        return tempRoute;
+    }
+
     public Route getRouteAfterInsertion(Request request) {
         if (previousPickupIndex == 1 && previousDeliveryIndex == 2 && routeStops.size() == 2) {
             previousPickupIndex = -1;
@@ -112,7 +136,7 @@ public class Route {
         updateStops(newRequestPickupIndex);
     }
 
-    public void removeRequest(Request request) {
+    public boolean removeRequest(Request request) {
         previousPickupIndex = -1;
         previousDeliveryIndex = -1;
 
@@ -125,10 +149,13 @@ public class Route {
                     routeStops.remove(previousDeliveryIndex);
                     routeStops.remove(previousPickupIndex);
                     updateStops(previousPickupIndex);
-                    break;
+                    return true;
                 }
             }
         }
+
+        assert previousPickupIndex == -1;
+        return false;
     }
 
     private boolean cycleInsertionPoints() {

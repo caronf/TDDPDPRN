@@ -1,8 +1,8 @@
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Random;
 
 public class Solution {
-    private final ArrayList<Request> requests;
     private final ArrayList<Route> routes;
     private final int maxNbRoutes;
     private double travelTime;
@@ -11,7 +11,6 @@ public class Solution {
 
     public Solution(int maxNbRoutes, ArrivalTimeFunction[][] arrivalTimeFunctions,
                     double depotTimeWindowUpperBound, double latenessWeight, double vehicleCapacity) {
-        requests = new ArrayList<>();
         routes = new ArrayList<>();
         routes.add(new Route(arrivalTimeFunctions, depotTimeWindowUpperBound, latenessWeight, vehicleCapacity));
 
@@ -22,7 +21,6 @@ public class Solution {
     }
 
     public Solution(Solution otherSolution) {
-        requests = new ArrayList<>(otherSolution.requests);
         routes = new ArrayList<>(otherSolution.routes.size());
         for (Route route : otherSolution.routes) {
             routes.add(new Route(route));
@@ -32,6 +30,30 @@ public class Solution {
         travelTime = otherSolution.travelTime;
         lateness = otherSolution.lateness;
         cost = otherSolution.cost;
+    }
+
+    public void insertRequestAtRandomPosition(Request request, Random random) {
+        int routeIndex = random.nextInt(routes.size());
+        if (routeIndex == routes.size() - 1 && routes.size() < maxNbRoutes) {
+            routes.add(new Route(routes.get(routeIndex)));
+        }
+
+        Route routeAfterInsertion = routes.get(routeIndex).getRouteAfterRandomInsertion(request, random);
+        if (routeIndex == routes.size() - 1 && routes.size() < maxNbRoutes) {
+            routes.add(routeIndex, routeAfterInsertion);
+        }
+        else
+        {
+            travelTime -= routes.get(routeIndex).getTravelTime();
+            lateness -= routes.get(routeIndex).getLateness();
+            cost -= routes.get(routeIndex).getCost();
+
+            routes.set(routeIndex, routeAfterInsertion);
+        }
+
+        travelTime += routeAfterInsertion.getTravelTime();
+        lateness += routeAfterInsertion.getLateness();
+        cost += routeAfterInsertion.getCost();
     }
 
     public void insertRequest(Request request) {
@@ -52,19 +74,21 @@ public class Solution {
         }
 
         assert bestRoute != null;
-        travelTime += bestRoute.getTravelTime() - routes.get(bestRouteIndex).getTravelTime();
-        lateness += bestRoute.getLateness() - routes.get(bestRouteIndex).getLateness();
-        cost += bestCostIncrease;
-
         if (bestRouteIndex == routes.size() - 1 && routes.size() < maxNbRoutes) {
             routes.add(bestRouteIndex, bestRoute);
         }
         else
         {
+            travelTime -= routes.get(bestRouteIndex).getTravelTime();
+            lateness -= routes.get(bestRouteIndex).getLateness();
+            cost -= routes.get(bestRouteIndex).getCost();
+
             routes.set(bestRouteIndex, bestRoute);
         }
 
-        this.requests.add(request);
+        travelTime += bestRoute.getTravelTime();
+        lateness += bestRoute.getLateness();
+        cost += bestRoute.getCost();
     }
 
     public void insertRequestsAnyOrder(Iterable<Request> requests) {
@@ -128,7 +152,7 @@ public class Solution {
 
             costIncreaseMatrix.remove(bestRequestIndex);
             newRoutesMatrix.remove(bestRequestIndex);
-            this.requests.add(requestsToInsert.remove(bestRequestIndex));
+            requestsToInsert.remove(bestRequestIndex);
 
             // Update the insertion cost of every remaining request for this route
             for (int i = 0; i < requestsToInsert.size(); ++i) {
@@ -153,11 +177,15 @@ public class Solution {
             lateness -= route.getLateness();
             cost -= route.getCost();
 
-            route.removeRequest(request);
+            boolean requestRemoved = route.removeRequest(request);
 
             travelTime += route.getTravelTime();
             lateness += route.getLateness();
             cost += route.getCost();
+
+            if (requestRemoved) {
+                break;
+            }
         }
     }
 

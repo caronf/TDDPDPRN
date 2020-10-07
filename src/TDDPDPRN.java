@@ -1,5 +1,6 @@
 import java.io.FileNotFoundException;
 import java.util.Arrays;
+import java.util.Random;
 
 public class TDDPDPRN {
     public static void main(String[] args) {
@@ -22,9 +23,12 @@ public class TDDPDPRN {
         int[] nbInstancesPerNodeCount = new int[arrayNbNodes.length];
 
         for (int nbClientsIndex = 0; nbClientsIndex < arrayNbClients.length; ++nbClientsIndex) {
+            int nbInstancesForNbClients = 0;
             TabuSearch tabuSearch = new TabuSearch(
                     arrayNbClients[nbClientsIndex] * 10,
-                    arrayNbClients[nbClientsIndex] * 3 / 8);
+                    arrayNbClients[nbClientsIndex] * 3 / 8,
+                    10,
+                    arrayNbClients[nbClientsIndex] / 4);
 
             for (int nbNodeIndex = 0; nbNodeIndex < arrayNbNodes.length; ++nbNodeIndex) {
                 for (double corr : arrayCorr) {
@@ -53,8 +57,12 @@ public class TDDPDPRN {
                             initialSolutionTime += (System.nanoTime() - time) / 1000000000.0;
                             initialSolutionCost += initialSolution.getCost();
 
+                            Random instanceRandom = new Random(arrayNbClients[nbClientsIndex] * 100000000 +
+                                    arrayNbNodes[nbNodeIndex] * 100000 + (int) (corr * 1000) +
+                                    index * 100 + timeWindowType.charAt(0));
                             time = System.nanoTime();
-                            Solution solutionAfterTabu = tabuSearch.Apply(initialSolution, inputData.requests);
+                            Solution solutionAfterTabu =
+                                    tabuSearch.Apply(initialSolution, inputData.requests, instanceRandom);
                             tabuSearchTimes[nbClientsIndex] += (System.nanoTime() - time) / 1000000000.0;
                             afterTabuCost += solutionAfterTabu.getCost();
 
@@ -65,6 +73,7 @@ public class TDDPDPRN {
                             }
 
                             ++nbInstances;
+                            ++nbInstancesForNbClients;
                             ++nbInstancesPerNodeCount[nbNodeIndex];
                         }
                     }
@@ -72,6 +81,15 @@ public class TDDPDPRN {
             }
 
             tabuSearchTimes[nbClientsIndex] /= tabuSearch.getTotalNbIterations();
+
+            StringBuilder s = new StringBuilder(String.format("Best solution average for %d clients:\n0\t1.00",
+                    arrayNbClients[nbClientsIndex] / 2));
+            int i = 10;
+            for (double percentage : tabuSearch.getBestSolutionPercentages()) {
+                s.append(String.format("\n%d\t%f", i, percentage / nbInstancesForNbClients));
+                i += 10;
+            }
+            System.out.println(s);
         }
 
         for (int i = 0; i < preprocessingTimes.length; ++i) {
