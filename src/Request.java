@@ -8,10 +8,11 @@ public class Request {
     public final double deliveryTimeWindowLowerBound;
     public final double deliveryTimeWindowUpperBound;
     public final double deliveryServiceTime;
+    public final double releaseTime;
 
     public Request(int pickupNode, int deliveryNode, double load, double pickupTimeWindowLowerBound,
                    double pickupTimeWindowUpperBound, double pickupServiceTime, double deliveryTimeWindowLowerBound,
-                   double deliveryTimeWindowUpperBound, double deliveryServiceTime) {
+                   double deliveryTimeWindowUpperBound, double deliveryServiceTime, double releaseTime) {
         this.pickupNode = pickupNode;
         this.deliveryNode = deliveryNode;
         this.load = load;
@@ -21,5 +22,6 @@ public class Request {
         this.deliveryTimeWindowLowerBound = deliveryTimeWindowLowerBound;
         this.deliveryTimeWindowUpperBound = deliveryTimeWindowUpperBound;
         this.deliveryServiceTime = deliveryServiceTime;
+        this.releaseTime = releaseTime;
     }
 }

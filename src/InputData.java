@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Random;
 import java.util.Scanner;
 
 public class InputData {
@@ -15,7 +16,8 @@ public class InputData {
     public final int nbVehicles;
     public final double vehicleCapacity;
 
-    public InputData(int nbNodes, int nbClients, double corr, int index, String tw) throws FileNotFoundException {
+    public InputData(int nbNodes, int nbClients, double corr, int index, String tw, Random random, double dynamismRatio)
+			throws FileNotFoundException {
 		distanceMatrix = new double[nbNodes][nbNodes];
 		speedFunctionMatrix = new int[nbNodes][nbNodes];
 		String[] line;
@@ -57,7 +59,15 @@ public class InputData {
 		assert Integer.parseInt(line[0]) == 0;
 		depotTimeWindowUpperBound = Double.parseDouble(line[5]);
 
-		requests = new ArrayList<>(nbClients / 2);
+		int nbRequests = nbClients / 2;
+		requests = new ArrayList<>(nbRequests);
+		ArrayList<Integer> staticRequestIndices = new ArrayList<>(nbRequests);
+		for (int i = 0; i < nbRequests; ++i) {
+			staticRequestIndices.add(i);
+		}
+		for (int i = 0; i < Math.round(nbRequests * dynamismRatio); ++i) {
+			staticRequestIndices.remove(random.nextInt(staticRequestIndices.size()));
+		}
 
 		while(sc.hasNextLine()) {
 			line = sc.nextLine().trim().split("\\s+");
@@ -65,7 +75,6 @@ public class InputData {
 				break;
 			}
 
-			//double  dem =Float.parseFloat(temp[3]);
 			int node1 = Integer.parseInt(line[0]);
 			double load = Double.parseDouble(line[3]);
 			double timeWindowLowerBound1 = Double.parseDouble(line[4]);
@@ -83,11 +92,15 @@ public class InputData {
 					timeWindowUpperBound1 == timeWindowUpperBound2 && timeWindowLowerBound1 <= timeWindowLowerBound2) {
 				requests.add(new Request(node1, node2, load,
 						timeWindowLowerBound1, timeWindowUpperBound1, 0.0,
-						timeWindowLowerBound2, timeWindowUpperBound2, 0.0));
+						timeWindowLowerBound2, timeWindowUpperBound2, 0.0,
+						staticRequestIndices.contains(requests.size()) ? 0.0 :
+								random.nextDouble() * timeWindowLowerBound1));
 			} else {
 				requests.add(new Request(node2, node1, load,
 						timeWindowLowerBound2, timeWindowUpperBound2, 0.0,
-						timeWindowLowerBound1, timeWindowUpperBound1, 0.0));
+						timeWindowLowerBound1, timeWindowUpperBound1, 0.0,
+						staticRequestIndices.contains(requests.size()) ? 0.0 :
+								random.nextDouble() * timeWindowLowerBound2));
 			}
 		}
 		sc.close();

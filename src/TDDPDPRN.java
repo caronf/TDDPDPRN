@@ -13,7 +13,7 @@ public class TDDPDPRN {
 
         double inputDataReadTime = 0.0;
         double[] preprocessingTimes = new double[arrayNbNodes.length];
-        double initialSolutionTime = 0.0;
+        double initialSolutionTimeAverage = 0.0;
         double[] tabuSearchTimes = new double[arrayNbClients.length];
         double initialSolutionCost = 0.0;
         double afterTabuCost = 0.0;
@@ -22,93 +22,117 @@ public class TDDPDPRN {
         int nbInstances = 0;
         int[] nbInstancesPerNodeCount = new int[arrayNbNodes.length];
 
+        long startTime = System.nanoTime();
+
+        DynamicProblemSolver dynamicProblemSolver = new DynamicProblemSolver(1.0);
+
         for (int nbClientsIndex = 0; nbClientsIndex < arrayNbClients.length; ++nbClientsIndex) {
             int nbInstancesForNbClients = 0;
             TabuSearch tabuSearch = new TabuSearch(
                     arrayNbClients[nbClientsIndex] * 10,
                     arrayNbClients[nbClientsIndex] * 3 / 8,
-                    10,
+                    5,
                     arrayNbClients[nbClientsIndex] / 4);
 
             for (int nbNodeIndex = 0; nbNodeIndex < arrayNbNodes.length; ++nbNodeIndex) {
                 for (double corr : arrayCorr) {
                     for (int index : indices) {
                         for (String timeWindowType : timeWindowTypes) {
+                            Random instanceRandom = new Random(arrayNbClients[nbClientsIndex] * 100000000 +
+                                    arrayNbNodes[nbNodeIndex] * 100000 + (int) (corr * 1000) +
+                                    index * 100 + timeWindowType.charAt(0));
+
                             long time = System.nanoTime();
                             InputData inputData;
                             try {
                                 inputData = new InputData(arrayNbNodes[nbNodeIndex], arrayNbClients[nbClientsIndex],
-                                        corr, index, timeWindowType);
+                                        corr, index, timeWindowType, instanceRandom, 0.5);
                             } catch (FileNotFoundException e) {
                                 // Not all parameter combinations exist
                                 continue;
                             }
                             inputDataReadTime += (System.nanoTime() - time) / 1000000000.0;
 
-                            time = System.nanoTime();
-                            ArrivalTimeFunction[][] arrivalTimeFunctions =
-                                    DominantShortestPath.getDominantShortestPaths(inputData);
-                            preprocessingTimes[nbNodeIndex] += (System.nanoTime() - time) / 1000000000.0;
+                            Solution solution = dynamicProblemSolver.apply(inputData, instanceRandom, tabuSearch);
+                            System.out.println(solution.getCost());
 
-                            time = System.nanoTime();
-                            Solution initialSolution = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
-                                    inputData.depotTimeWindowUpperBound, latenessWeight, inputData.vehicleCapacity);
-                            initialSolution.insertRequestsBestFirst(inputData.requests);
-                            initialSolutionTime += (System.nanoTime() - time) / 1000000000.0;
-                            initialSolutionCost += initialSolution.getCost();
-
-                            Random instanceRandom = new Random(arrayNbClients[nbClientsIndex] * 100000000 +
-                                    arrayNbNodes[nbNodeIndex] * 100000 + (int) (corr * 1000) +
-                                    index * 100 + timeWindowType.charAt(0));
-                            time = System.nanoTime();
-                            Solution solutionAfterTabu =
-                                    tabuSearch.Apply(initialSolution, inputData.requests, instanceRandom);
-                            tabuSearchTimes[nbClientsIndex] += (System.nanoTime() - time) / 1000000000.0;
-                            afterTabuCost += solutionAfterTabu.getCost();
-
-                            double improvement = 1.0 - solutionAfterTabu.getCost() / initialSolution.getCost();
-                            totalImprovement += improvement;
-                            if (improvement > maxTotalImprovement) {
-                                maxTotalImprovement = improvement;
-                            }
-
+//                            time = System.nanoTime();
+//                            ArrivalTimeFunction[][] arrivalTimeFunctions =
+//                                    DominantShortestPath.getDominantShortestPaths(inputData);
+//                            double preprocessingTime = (System.nanoTime() - time) / 1000000000.0;
+//                            preprocessingTimes[nbNodeIndex] += preprocessingTime / 1000000000.0;
+//
+//                            time = System.nanoTime();
+//                            Solution initialSolution = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
+//                                    inputData.depotTimeWindowUpperBound, latenessWeight, inputData.vehicleCapacity);
+//                            initialSolution.insertRequestsBestFirst(inputData.requests);
+//                            double initialSolutionTime = (System.nanoTime() - time) / 1000000000.0;
+//                            initialSolutionTimeAverage += initialSolutionTime;
+//                            initialSolutionCost += initialSolution.getCost();
+//
+//                            time = System.nanoTime();
+//                            Solution solutionAfterTabu =
+//                                    tabuSearch.Apply(initialSolution, inputData.requests, instanceRandom);
+//                            double tabuSearchTime = (System.nanoTime() - time) / 1000000000.0;
+//                            tabuSearchTimes[nbClientsIndex] += tabuSearchTime;
+//                            afterTabuCost += solutionAfterTabu.getCost();
+//
+//                            double improvement = 1.0 - solutionAfterTabu.getCost() / initialSolution.getCost();
+//                            totalImprovement += improvement;
+//                            if (improvement > maxTotalImprovement) {
+//                                maxTotalImprovement = improvement;
+//                            }
+//
+//                            System.out.println(String.format("%f\t%f",
+////                                    arrayNbNodes[nbNodeIndex],
+////                                    arrayNbClients[nbClientsIndex],
+////                                    corr,
+////                                    index,
+////                                    timeWindowType,
+////                                    preprocessingTime,
+////                                    initialSolutionTime,
+//                                    tabuSearchTime,
+////                                    initialSolution.getCost(),
+//                                    solutionAfterTabu.getCost()));
+//
                             ++nbInstances;
-                            ++nbInstancesForNbClients;
-                            ++nbInstancesPerNodeCount[nbNodeIndex];
+//                            ++nbInstancesForNbClients;
+//                            ++nbInstancesPerNodeCount[nbNodeIndex];
                         }
                     }
                 }
             }
 
-            tabuSearchTimes[nbClientsIndex] /= tabuSearch.getTotalNbIterations();
+//            tabuSearchTimes[nbClientsIndex] /= tabuSearch.getTotalNbIterations();
 
-            StringBuilder s = new StringBuilder(String.format("Best solution average for %d clients:\n0\t1.00",
-                    arrayNbClients[nbClientsIndex] / 2));
-            int i = 10;
-            for (double percentage : tabuSearch.getBestSolutionPercentages()) {
-                s.append(String.format("\n%d\t%f", i, percentage / nbInstancesForNbClients));
-                i += 10;
-            }
-            System.out.println(s);
+//            StringBuilder s = new StringBuilder(String.format("Best solution average for %d clients:\n0\t1.00",
+//                    arrayNbClients[nbClientsIndex] / 2));
+//            int i = 10;
+//            for (double percentage : tabuSearch.getBestSolutionPercentages()) {
+//                s.append(String.format("\n%d\t%f", i, percentage / nbInstancesForNbClients));
+//                i += 10;
+//            }
+//            System.out.println(s);
         }
 
-        for (int i = 0; i < preprocessingTimes.length; ++i) {
-            preprocessingTimes[i] /= nbInstancesPerNodeCount[i];
-        }
-
-        inputDataReadTime /= nbInstances;
-        initialSolutionTime /= nbInstances;
-        initialSolutionCost /= nbInstances;
-        afterTabuCost /= nbInstances;
-        totalImprovement /= nbInstances;
-
-        System.out.println(String.format("inputDataReadTime = %f", inputDataReadTime));
-        System.out.println(String.format("preprocessingTimes = %s", Arrays.toString(preprocessingTimes)));
-        System.out.println(String.format("initialSolutionTime = %f", initialSolutionTime));
-        System.out.println(String.format("tabuSearchTimes = %s", Arrays.toString(tabuSearchTimes)));
-        System.out.println(String.format("initialSolutionCost = %f", initialSolutionCost));
-        System.out.println(String.format("afterTabuCost = %f", afterTabuCost));
-        System.out.println(String.format("totalImprovement = %f", totalImprovement));
-        System.out.println(String.format("maxTotalImprovement = %f", maxTotalImprovement));
+//        for (int i = 0; i < preprocessingTimes.length; ++i) {
+//            preprocessingTimes[i] /= nbInstancesPerNodeCount[i];
+//        }
+//
+//        inputDataReadTime /= nbInstances;
+//        initialSolutionTimeAverage /= nbInstances;
+//        initialSolutionCost /= nbInstances;
+//        afterTabuCost /= nbInstances;
+//        totalImprovement /= nbInstances;
+//
+//        System.out.println(String.format("inputDataReadTime = %f", inputDataReadTime));
+//        System.out.println(String.format("preprocessingTimes = %s", Arrays.toString(preprocessingTimes)));
+//        System.out.println(String.format("initialSolutionTimeAverage = %f", initialSolutionTimeAverage));
+//        System.out.println(String.format("tabuSearchTimes = %s", Arrays.toString(tabuSearchTimes)));
+//        System.out.println(String.format("initialSolutionCost = %f", initialSolutionCost));
+//        System.out.println(String.format("afterTabuCost = %f", afterTabuCost));
+//        System.out.println(String.format("totalImprovement = %f", totalImprovement));
+//        System.out.println(String.format("maxTotalImprovement = %f", maxTotalImprovement));
+        System.out.println(String.format("totalTime = %fs", (System.nanoTime() - startTime) / 1000000000.0));
     }
 }

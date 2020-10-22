@@ -8,6 +8,7 @@ public class Solution {
     private double travelTime;
     private double lateness;
     private double cost;
+    private int routeIndexForNextInsertion;
 
     public Solution(int maxNbRoutes, ArrivalTimeFunction[][] arrivalTimeFunctions,
                     double depotTimeWindowUpperBound, double latenessWeight, double vehicleCapacity) {
@@ -18,6 +19,7 @@ public class Solution {
         travelTime = routes.get(0).getTravelTime();
         lateness = routes.get(0).getLateness();
         cost = routes.get(0).getCost();
+        routeIndexForNextInsertion = -1;
     }
 
     public Solution(Solution otherSolution) {
@@ -30,12 +32,16 @@ public class Solution {
         travelTime = otherSolution.travelTime;
         lateness = otherSolution.lateness;
         cost = otherSolution.cost;
+        routeIndexForNextInsertion = otherSolution.routeIndexForNextInsertion;
     }
 
     public void insertRequestAtRandomPosition(Request request, Random random) {
-        int routeIndex = random.nextInt(routes.size());
-        if (routeIndex == routes.size() - 1 && routes.size() < maxNbRoutes) {
-            routes.add(new Route(routes.get(routeIndex)));
+        int routeIndex;
+        if (routeIndexForNextInsertion >= 0) {
+            routeIndex = routeIndexForNextInsertion;
+            routeIndexForNextInsertion = -1;
+        } else {
+            routeIndex = random.nextInt(routes.size());
         }
 
         Route routeAfterInsertion = routes.get(routeIndex).getRouteAfterRandomInsertion(request, random);
@@ -59,31 +65,35 @@ public class Solution {
     public void insertRequest(Request request) {
         double bestCostIncrease = Double.MAX_VALUE;
         Route bestRoute = null;
-        int bestRouteIndex = -1;
-
-        for (int i = 0; i < routes.size(); ++i) {
-            Route newRoute = routes.get(i).getRouteAfterInsertion(request);
-            if (newRoute != null) {
-                double costIncrease = newRoute.getCost() - routes.get(i).getCost();
-                if (costIncrease < bestCostIncrease) {
-                    bestCostIncrease = costIncrease;
-                    bestRoute = newRoute;
-                    bestRouteIndex = i;
+        int routeIndex = -1;
+        if (routeIndexForNextInsertion >= 0) {
+            routeIndex = routeIndexForNextInsertion;
+            routeIndexForNextInsertion = -1;
+        } else {
+            for (int i = 0; i < routes.size(); ++i) {
+                Route newRoute = routes.get(i).getRouteAfterInsertion(request);
+                if (newRoute != null) {
+                    double costIncrease = newRoute.getCost() - routes.get(i).getCost();
+                    if (costIncrease < bestCostIncrease) {
+                        bestCostIncrease = costIncrease;
+                        bestRoute = newRoute;
+                        routeIndex = i;
+                    }
                 }
             }
         }
 
         assert bestRoute != null;
-        if (bestRouteIndex == routes.size() - 1 && routes.size() < maxNbRoutes) {
-            routes.add(bestRouteIndex, bestRoute);
+        if (routeIndex == routes.size() - 1 && routes.size() < maxNbRoutes) {
+            routes.add(routeIndex, bestRoute);
         }
         else
         {
-            travelTime -= routes.get(bestRouteIndex).getTravelTime();
-            lateness -= routes.get(bestRouteIndex).getLateness();
-            cost -= routes.get(bestRouteIndex).getCost();
+            travelTime -= routes.get(routeIndex).getTravelTime();
+            lateness -= routes.get(routeIndex).getLateness();
+            cost -= routes.get(routeIndex).getCost();
 
-            routes.set(bestRouteIndex, bestRoute);
+            routes.set(routeIndex, bestRoute);
         }
 
         travelTime += bestRoute.getTravelTime();
@@ -92,12 +102,16 @@ public class Solution {
     }
 
     public void insertRequestsAnyOrder(Iterable<Request> requests) {
+        assert routeIndexForNextInsertion == -1;
+
         for (Request request : requests) {
             insertRequest(request);
         }
     }
 
     public void insertRequestsBestFirst(Collection<Request> requests) {
+        assert routeIndexForNextInsertion == -1;
+
         ArrayList<Request> requestsToInsert = new ArrayList<>(requests);
         ArrayList<ArrayList<Double>> costIncreaseMatrix = new ArrayList<>(requests.size());
         ArrayList<ArrayList<Route>> newRoutesMatrix = new ArrayList<>(requests.size());
@@ -172,24 +186,33 @@ public class Solution {
     }
 
     public void removeRequest(Request request) {
-        for (Route route : routes) {
-            travelTime -= route.getTravelTime();
-            lateness -= route.getLateness();
-            cost -= route.getCost();
+        for (int i = 0; i < routes.size(); ++i) {
+            travelTime -= routes.get(i).getTravelTime();
+            lateness -= routes.get(i).getLateness();
+            cost -= routes.get(i).getCost();
 
-            boolean requestRemoved = route.removeRequest(request);
+            int nbRemoved = routes.get(i).removeRequest(request);
 
-            travelTime += route.getTravelTime();
-            lateness += route.getLateness();
-            cost += route.getCost();
+            travelTime += routes.get(i).getTravelTime();
+            lateness += routes.get(i).getLateness();
+            cost += routes.get(i).getCost();
 
-            if (requestRemoved) {
-                break;
+            if (nbRemoved > 0) {
+                if (nbRemoved == 1) {
+                    routeIndexForNextInsertion = i;
+                }
+                return;
             }
         }
     }
 
     public double getCost() {
         return cost;
+    }
+
+    public void setCurrentTime(double time) {
+        for (Route route : routes) {
+            route.setCurrentTime(time);
+        }
     }
 }

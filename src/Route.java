@@ -8,6 +8,11 @@ public class Route {
     private final double vehicleCapacity;
     private double travelTime;
     private double lateness;
+    private double currentTime;
+
+    // Stops become sealed when the vehicle is on its way and remain sealed afterwards
+    private int nbSealedStops;
+
     private int newRequestPickupIndex;
     private int newRequestDeliveryIndex;
 
@@ -23,6 +28,8 @@ public class Route {
 
         travelTime = -1.0;
         lateness = -1.0;
+        currentTime = 0.0;
+        nbSealedStops = 1;
         newRequestPickupIndex = -1;
         newRequestDeliveryIndex = -1;
         previousPickupIndex = -1;
@@ -40,6 +47,8 @@ public class Route {
 
         travelTime = otherRoute.travelTime;
         lateness = otherRoute.lateness;
+        currentTime = otherRoute.currentTime;
+        nbSealedStops = otherRoute.nbSealedStops;
         newRequestPickupIndex = -1;
         newRequestDeliveryIndex = -1;
         previousPickupIndex = otherRoute.previousPickupIndex;
@@ -70,13 +79,41 @@ public class Route {
         return lateness;
     }
 
+    public Route getRouteAfterInsertion(Request request) {
+        if (previousPickupIndex == nbSealedStops &&
+                previousDeliveryIndex == nbSealedStops + 1 &&
+                routeStops.size() == nbSealedStops + 1) {
+            previousPickupIndex = -1;
+            previousDeliveryIndex = -1;
+            return null;
+        }
+
+        Route tempRoute = new Route(this);
+        tempRoute.insertRequest(request);
+        Route bestRoute = null;
+
+        do {
+            if (tempRoute.isFeasible() &&
+                    (bestRoute == null || DoubleComparator.lessThan(tempRoute.getCost(), bestRoute.getCost()))) {
+                bestRoute = new Route(tempRoute);
+            }
+        } while (tempRoute.cycleInsertionPoints());
+
+        assert bestRoute != null;
+        previousPickupIndex = -1;
+        previousDeliveryIndex = -1;
+        bestRoute.previousPickupIndex = -1;
+        bestRoute.previousDeliveryIndex = -1;
+        return bestRoute;
+    }
+
     public Route getRouteAfterRandomInsertion(Request request, Random random) {
         Route tempRoute;
 
         do {
             tempRoute = new Route(this);
-            int pickupIndex = random.nextInt(routeStops.size() - 1) + 1;
-            int deliveryIndex = random.nextInt(routeStops.size() - 1) +1;
+            int pickupIndex = random.nextInt(routeStops.size() - nbSealedStops) + nbSealedStops;
+            int deliveryIndex = random.nextInt(routeStops.size() - nbSealedStops) + nbSealedStops;
             if (deliveryIndex < pickupIndex) {
                 int i = pickupIndex;
                 pickupIndex = deliveryIndex;
@@ -93,54 +130,11 @@ public class Route {
         return tempRoute;
     }
 
-    public Route getRouteAfterInsertion(Request request) {
-        if (previousPickupIndex == 1 && previousDeliveryIndex == 2 && routeStops.size() == 2) {
-            previousPickupIndex = -1;
-            previousDeliveryIndex = -1;
-            return null;
-        }
-
-        Route tempRoute = new Route(this);
-        tempRoute.insertRequest(request);
-
-        // The first insertion should always be feasible unless the request's load
-        // is greater than the vehicle capacity in which case the instance is infeasible
-        assert tempRoute.isFeasible();
-
-        Route bestRoute = new Route(tempRoute);
-
-        while (tempRoute.cycleInsertionPoints()) {
-            if (tempRoute.isFeasible() && DoubleComparator.lessThan(tempRoute.getCost(), bestRoute.getCost())) {
-                bestRoute = new Route(tempRoute);
-            }
-        }
-
-        previousPickupIndex = -1;
-        previousDeliveryIndex = -1;
-        bestRoute.previousPickupIndex = -1;
-        bestRoute.previousDeliveryIndex = -1;
-        return bestRoute;
-    }
-
-    private void insertRequest(Request request) {
-        newRequestPickupIndex = 1;
-        if (previousPickupIndex == 1 && newRequestDeliveryIndex == 2) {
-            newRequestDeliveryIndex = 3;
-        } else {
-            newRequestDeliveryIndex = 2;
-        }
-
-        routeStops.add(newRequestPickupIndex, new PickupRouteStop(request));
-        routeStops.add(newRequestDeliveryIndex, new DeliveryRouteStop(request));
-
-        updateStops(newRequestPickupIndex);
-    }
-
-    public boolean removeRequest(Request request) {
+    public int removeRequest(Request request) {
         previousPickupIndex = -1;
         previousDeliveryIndex = -1;
 
-        for (int i = 1; i < routeStops.size() - 1; ++i) {
+        for (int i = nbSealedStops; i < routeStops.size() - 1; ++i) {
             if (routeStops.get(i).servesRequest(request)) {
                 if (previousPickupIndex == -1) {
                     previousPickupIndex = i;
@@ -149,13 +143,32 @@ public class Route {
                     routeStops.remove(previousDeliveryIndex);
                     routeStops.remove(previousPickupIndex);
                     updateStops(previousPickupIndex);
-                    return true;
+                    return 2;
                 }
             }
         }
 
-        assert previousPickupIndex == -1;
-        return false;
+        if (previousPickupIndex != -1) {
+            previousDeliveryIndex = previousPickupIndex;
+            previousPickupIndex = -1;
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
+    private void insertRequest(Request request) {
+        newRequestPickupIndex = nbSealedStops;
+        if (previousPickupIndex == nbSealedStops && newRequestDeliveryIndex == nbSealedStops + 1) {
+            newRequestDeliveryIndex = nbSealedStops + 2;
+        } else {
+            newRequestDeliveryIndex = nbSealedStops + 1;
+        }
+
+        routeStops.add(newRequestPickupIndex, new PickupRouteStop(request));
+        routeStops.add(newRequestDeliveryIndex, new DeliveryRouteStop(request));
+
+        updateStops(newRequestPickupIndex);
     }
 
     private boolean cycleInsertionPoints() {
@@ -194,14 +207,17 @@ public class Route {
     }
 
     private void updateStops(int updateFromIndex) {
-        assert updateFromIndex > 0;
+        assert updateFromIndex >= nbSealedStops;
 
         for (int i = updateFromIndex; i < routeStops.size(); ++i) {
-            routeStops.get(i-1).setDepartureTime(Math.max(routeStops.get(i-1).getArrivalTime() + routeStops.get(i-1).getServiceTime(),
+            routeStops.get(i-1).setDepartureTime(Math.max(currentTime, Math.max(
+                    routeStops.get(i-1).getArrivalTime() + routeStops.get(i-1).getServiceTime(),
                     arrivalTimeFunctions[routeStops.get(i-1).getNode()][routeStops.get(i).getNode()].getDepartureTime(
-                            routeStops.get(i).getTimeWindowLowerBound())));
+                            routeStops.get(i).getTimeWindowLowerBound()))));
+
             routeStops.get(i).setArrivalTime(arrivalTimeFunctions[routeStops.get(i-1).getNode()][routeStops.get(i).getNode()].getArrivalTime(
                     routeStops.get(i-1).getDepartureTime()));
+
             routeStops.get(i).setLoadAtArrival(routeStops.get(i-1).getLoadAtDeparture());
         }
 
@@ -219,5 +235,12 @@ public class Route {
         }
 
         return true;
+    }
+
+    public void setCurrentTime(double currentTime) {
+        this.currentTime = currentTime;
+        while (nbSealedStops < routeStops.size() - 1 && routeStops.get(nbSealedStops - 1).getDepartureTime() < currentTime) {
+            ++nbSealedStops;
+        }
     }
 }

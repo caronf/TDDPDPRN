@@ -33,7 +33,9 @@ public class RouteStart extends RouteStop {
     @Override
     public RouteStart copy() {
         RouteStart routeStart = new RouteStart();
+        assert arrivalTime == 0.0;
         routeStart.setDepartureTime(departureTime);
+        assert loadAtArrival == 0.0;
         return routeStart;
     }
 }
