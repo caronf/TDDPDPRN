@@ -26,8 +26,8 @@ public class PickupRouteStop extends RouteStop {
     }
 
     @Override
-    public double getLoadAtDeparture() {
-        return loadAtArrival + request.load;
+    public void setLoadAtArrival(double loadAtArrival) {
+        loadAtDeparture = loadAtArrival + request.load;
     }
 
     @Override
@@ -40,7 +40,7 @@ public class PickupRouteStop extends RouteStop {
         PickupRouteStop pickupRouteStop = new PickupRouteStop(request);
         pickupRouteStop.setArrivalTime(arrivalTime);
         pickupRouteStop.setDepartureTime(departureTime);
-        pickupRouteStop.setLoadAtArrival(loadAtArrival);
+        pickupRouteStop.loadAtDeparture = loadAtDeparture;
         return pickupRouteStop;
     }
 }

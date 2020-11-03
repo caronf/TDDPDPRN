@@ -4,33 +4,42 @@ import java.util.Random;
 
 public class TabuSearch {
     private int totalNbIterations;
-    private final int stoppingCriteria;
-    private final int tabuTenure;
+    private int stoppingCriteria;
+    private int tabuTenure;
     private final int nbDiversificationIterations;
-    private final int nbRandomMoves;
-    private final double[] bestSolutionPercentages;
-    private final double[] currentSolutionPercentages;
+    private int nbRandomMoves;
+//    private final double[] bestSolutionPercentages;
+//    private final double[] currentSolutionPercentages;
 
-    public TabuSearch(int stoppingCriteria, int tabuTenure, int nbDiversificationIterations, int nbRandomMoves) {
+    public TabuSearch(int nbDiversificationIterations) {
         totalNbIterations = 0;
-        this.stoppingCriteria = stoppingCriteria;
-        this.tabuTenure = tabuTenure;
         this.nbDiversificationIterations = nbDiversificationIterations;
-        this.nbRandomMoves = nbRandomMoves;
-        bestSolutionPercentages = new double[stoppingCriteria * (nbDiversificationIterations + 1) / 10];
-        currentSolutionPercentages = new double[stoppingCriteria * (nbDiversificationIterations + 1) / 10];
+//        bestSolutionPercentages = new double[stoppingCriteria * (nbDiversificationIterations + 1) / 10];
+//        currentSolutionPercentages = new double[stoppingCriteria * (nbDiversificationIterations + 1) / 10];
     }
 
     public int getTotalNbIterations() {
         return totalNbIterations;
     }
 
-    public double[] getBestSolutionPercentages() {
-        return bestSolutionPercentages;
+//    public double[] getBestSolutionPercentages() {
+//        return bestSolutionPercentages;
+//    }
+//
+//    public double[] getCurrentSolutionPercentages() {
+//        return currentSolutionPercentages;
+//    }
+
+    public void setStoppingCriteria(int stoppingCriteria) {
+        this.stoppingCriteria = stoppingCriteria;
     }
 
-    public double[] getCurrentSolutionPercentages() {
-        return currentSolutionPercentages;
+    public void setTabuTenure(int tabuTenure) {
+        this.tabuTenure = tabuTenure;
+    }
+
+    public void setNbRandomMoves(int nbRandomMoves) {
+        this.nbRandomMoves = nbRandomMoves;
     }
 
     public Solution Apply(Solution startingSolution, List<Request> requests, Random random) {
@@ -38,18 +47,17 @@ public class TabuSearch {
         Solution bestSolution = startingSolution;
 
         int[] tabuCounters = new int[requests.size()];
-        int nbIterations = 0;
         int pastIterations = 0;
 
         for (int diversificationCounter = 0;
              diversificationCounter <= nbDiversificationIterations;
              ++diversificationCounter) {
-            do {
+            int nbIterations = 0;
+            while (nbIterations < stoppingCriteria) {
                 Solution bestTemporarySolution = null;
                 Solution bestTabuTemporarySolution = null;
                 int bestRequestIndex = -1;
                 int bestTabuRequestIndex = -1;
-
 
                 for (int i = 0; i < requests.size(); ++i) {
                     Solution temporarySolution = new Solution(currentSolution);
@@ -92,13 +100,13 @@ public class TabuSearch {
 
                 ++totalNbIterations;
                 ++nbIterations;
-                if ((nbIterations + pastIterations) % 10 == 0) {
-                    bestSolutionPercentages[(nbIterations + pastIterations) / 10 - 1] +=
-                            bestSolution.getCost() / startingSolution.getCost();
-                    currentSolutionPercentages[(nbIterations + pastIterations) / 10 - 1] +=
-                            currentSolution.getCost() / startingSolution.getCost();
-                }
-            } while (nbIterations < stoppingCriteria);
+//                if ((nbIterations + pastIterations) % 10 == 0) {
+//                    bestSolutionPercentages[(nbIterations + pastIterations) / 10 - 1] +=
+//                            bestSolution.getCost() / startingSolution.getCost();
+//                    currentSolutionPercentages[(nbIterations + pastIterations) / 10 - 1] +=
+//                            currentSolution.getCost() / startingSolution.getCost();
+//                }
+            }
 
             if (diversificationCounter < nbDiversificationIterations) {
                 if (currentSolution == bestSolution) {
@@ -106,11 +114,13 @@ public class TabuSearch {
                 }
 
                 for (int i = 0; i < nbRandomMoves; ++i) {
-                    int requestIndex = random.nextInt(requests.size());
-                    currentSolution.removeRequest(requests.get(requestIndex));
+                    int requestIndex;
+                    do {
+                        requestIndex = random.nextInt(requests.size());
+                    } while(currentSolution.removeRequest(requests.get(requestIndex)) == 0);
+
                     currentSolution.insertRequestAtRandomPosition(requests.get(requestIndex), random);
                     pastIterations += nbIterations;
-                    nbIterations = 0;
                 }
 
                 Arrays.fill(tabuCounters, 0);

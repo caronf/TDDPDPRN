@@ -1,9 +1,11 @@
 public abstract class RouteStop implements Cloneable {
     protected double arrivalTime;
     protected double departureTime;
-    protected double loadAtArrival;
+    protected double loadAtDeparture;
 
     public void setArrivalTime(double arrivalTime) {
+        assert DoubleComparator.greaterOrEqual(arrivalTime, getTimeWindowLowerBound()) &&
+                DoubleComparator.lessOrEqual(arrivalTime, getTimeWindowUpperBound());
         this.arrivalTime = arrivalTime;
     }
 
@@ -19,12 +21,8 @@ public abstract class RouteStop implements Cloneable {
         return departureTime;
     }
 
-    public void setLoadAtArrival(double loadAtArrival) {
-        this.loadAtArrival = loadAtArrival;
-    }
-
-    public double getLoadAtArrival() {
-        return loadAtArrival;
+    public double getLoadAtDeparture() {
+        return loadAtDeparture;
     }
 
     public double getLateness() {
@@ -38,7 +36,7 @@ public abstract class RouteStop implements Cloneable {
     public abstract int getNode();
     public abstract double getTimeWindowLowerBound();
     public abstract double getTimeWindowUpperBound();
-    public abstract double getLoadAtDeparture();
+    public abstract void setLoadAtArrival(double loadAtArrival);
     public abstract double getServiceTime();
     public abstract RouteStop copy();
 }

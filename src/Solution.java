@@ -8,6 +8,8 @@ public class Solution {
     private double travelTime;
     private double lateness;
     private double cost;
+
+    private boolean insertNextRequest;
     private int routeIndexForNextInsertion;
 
     public Solution(int maxNbRoutes, ArrivalTimeFunction[][] arrivalTimeFunctions,
@@ -19,6 +21,8 @@ public class Solution {
         travelTime = routes.get(0).getTravelTime();
         lateness = routes.get(0).getLateness();
         cost = routes.get(0).getCost();
+
+        insertNextRequest = true;
         routeIndexForNextInsertion = -1;
     }
 
@@ -32,19 +36,38 @@ public class Solution {
         travelTime = otherSolution.travelTime;
         lateness = otherSolution.lateness;
         cost = otherSolution.cost;
+
+        insertNextRequest =otherSolution.insertNextRequest;
         routeIndexForNextInsertion = otherSolution.routeIndexForNextInsertion;
     }
 
+    public int getNbUnsealedStops() {
+        int nbUnsealedSlot = 0;
+        for (Route route : routes) {
+            nbUnsealedSlot += route.getNbUnsealedStops();
+        }
+        return nbUnsealedSlot;
+    }
+
     public void insertRequestAtRandomPosition(Request request, Random random) {
+        if (!insertNextRequest) {
+            insertNextRequest = true;
+            return;
+        }
+
         int routeIndex;
+        boolean insertPickupStop;
         if (routeIndexForNextInsertion >= 0) {
             routeIndex = routeIndexForNextInsertion;
             routeIndexForNextInsertion = -1;
+            insertPickupStop = false;
         } else {
             routeIndex = random.nextInt(routes.size());
+            insertPickupStop = true;
         }
 
-        Route routeAfterInsertion = routes.get(routeIndex).getRouteAfterRandomInsertion(request, random);
+        Route routeAfterInsertion =
+                routes.get(routeIndex).getRouteAfterRandomInsertion(request, random, insertPickupStop);
         if (routeIndex == routes.size() - 1 && routes.size() < maxNbRoutes) {
             routes.add(routeIndex, routeAfterInsertion);
         }
@@ -63,11 +86,21 @@ public class Solution {
     }
 
     public void insertRequest(Request request) {
+        if (!insertNextRequest) {
+            insertNextRequest = true;
+            return;
+        }
+
         double bestCostIncrease = Double.MAX_VALUE;
         Route bestRoute = null;
         int routeIndex = -1;
         if (routeIndexForNextInsertion >= 0) {
             routeIndex = routeIndexForNextInsertion;
+            do {
+                bestRoute = routes.get(routeIndex).getRouteAfterInsertingDelivery(request);
+                // If the insertion fails the first time,
+                // the delivery will be inserted at its previous location the second time
+            } while (bestRoute == null);
             routeIndexForNextInsertion = -1;
         } else {
             for (int i = 0; i < routes.size(); ++i) {
@@ -185,7 +218,10 @@ public class Solution {
         }
     }
 
-    public void removeRequest(Request request) {
+    public int removeRequest(Request request) {
+        insertNextRequest = true;
+        routeIndexForNextInsertion = -1;
+
         for (int i = 0; i < routes.size(); ++i) {
             travelTime -= routes.get(i).getTravelTime();
             lateness -= routes.get(i).getLateness();
@@ -201,9 +237,12 @@ public class Solution {
                 if (nbRemoved == 1) {
                     routeIndexForNextInsertion = i;
                 }
-                return;
+                return nbRemoved;
             }
         }
+
+        insertNextRequest = false;
+        return 0;
     }
 
     public double getCost() {

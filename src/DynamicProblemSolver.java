@@ -15,6 +15,7 @@ public class DynamicProblemSolver {
                 inputData.depotTimeWindowUpperBound, latenessWeight, inputData.vehicleCapacity);
         double currentTime = 0.0;
         ArrayList<Request> requestsToInsert = new ArrayList<>();
+        ArrayList<Request> requestsInserted = new ArrayList<>(inputData.requests.size());
 
         while (currentTime < Double.MAX_VALUE) {
             double nextReleaseTime = Double.MAX_VALUE;
@@ -28,9 +29,14 @@ public class DynamicProblemSolver {
 
             solution.setCurrentTime(currentTime);
             solution.insertRequestsBestFirst(requestsToInsert);
+            requestsInserted.addAll(requestsToInsert);
             requestsToInsert.clear();
-//            Solution solutionAfterTabu =
-//                    tabuSearch.Apply(solution, inputData.requests, instanceRandom);
+
+            int nbUnsealedStops = solution.getNbUnsealedStops();
+            tabuSearch.setStoppingCriteria(nbUnsealedStops * 10);
+            tabuSearch.setTabuTenure(nbUnsealedStops * 3 / 8);
+            tabuSearch.setNbRandomMoves(nbUnsealedStops / 2);
+            solution = tabuSearch.Apply(solution, requestsInserted, random);
 
             currentTime = nextReleaseTime;
         }

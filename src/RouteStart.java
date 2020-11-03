@@ -2,7 +2,7 @@ public class RouteStart extends RouteStop {
     public RouteStart() {
         arrivalTime = 0.0;
         departureTime = 0.0;
-        loadAtArrival = 0.0;
+        loadAtDeparture = 0.0;
     }
 
     @Override
@@ -21,8 +21,8 @@ public class RouteStart extends RouteStop {
     }
 
     @Override
-    public double getLoadAtDeparture() {
-        return 0.0;
+    public void setLoadAtArrival(double loadAtArrival) {
+        throw new RuntimeException("The load at arrival of the route start cannot be modified.");
     }
 
     @Override
@@ -35,7 +35,7 @@ public class RouteStart extends RouteStop {
         RouteStart routeStart = new RouteStart();
         assert arrivalTime == 0.0;
         routeStart.setDepartureTime(departureTime);
-        assert loadAtArrival == 0.0;
+        assert loadAtDeparture == 0.0;
         return routeStart;
     }
 }

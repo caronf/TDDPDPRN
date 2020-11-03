@@ -87,6 +87,11 @@ public class InputData {
 			double timeWindowLowerBound2 = Double.parseDouble(line[4]);
 			double timeWindowUpperBound2 = Double.parseDouble(line[5]);
 
+			assert timeWindowLowerBound1 < depotTimeWindowUpperBound &&
+					timeWindowLowerBound2 < depotTimeWindowUpperBound &&
+					timeWindowUpperBound1 < depotTimeWindowUpperBound &&
+					timeWindowUpperBound2 < depotTimeWindowUpperBound;
+
 			// Select the earliest time window end (or start in case of equality) as the pickup point
 			if (timeWindowUpperBound1 < timeWindowUpperBound2 ||
 					timeWindowUpperBound1 == timeWindowUpperBound2 && timeWindowLowerBound1 <= timeWindowLowerBound2) {

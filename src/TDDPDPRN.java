@@ -24,16 +24,11 @@ public class TDDPDPRN {
 
         long startTime = System.nanoTime();
 
+        TabuSearch tabuSearch = new TabuSearch(10);
         DynamicProblemSolver dynamicProblemSolver = new DynamicProblemSolver(1.0);
 
         for (int nbClientsIndex = 0; nbClientsIndex < arrayNbClients.length; ++nbClientsIndex) {
             int nbInstancesForNbClients = 0;
-            TabuSearch tabuSearch = new TabuSearch(
-                    arrayNbClients[nbClientsIndex] * 10,
-                    arrayNbClients[nbClientsIndex] * 3 / 8,
-                    5,
-                    arrayNbClients[nbClientsIndex] / 4);
-
             for (int nbNodeIndex = 0; nbNodeIndex < arrayNbNodes.length; ++nbNodeIndex) {
                 for (double corr : arrayCorr) {
                     for (int index : indices) {
@@ -46,7 +41,7 @@ public class TDDPDPRN {
                             InputData inputData;
                             try {
                                 inputData = new InputData(arrayNbNodes[nbNodeIndex], arrayNbClients[nbClientsIndex],
-                                        corr, index, timeWindowType, instanceRandom, 0.5);
+                                        corr, index, timeWindowType, instanceRandom, 0.0);
                             } catch (FileNotFoundException e) {
                                 // Not all parameter combinations exist
                                 continue;

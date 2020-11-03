@@ -1,8 +1,8 @@
 public class RouteEnd extends RouteStop {
-    double timeWindowUpperBound;
+    double endOfTheDay;
 
-    public RouteEnd(double timeWindowUpperBound) {
-        this.timeWindowUpperBound = timeWindowUpperBound;
+    public RouteEnd(double endOfTheDay) {
+        this.endOfTheDay = endOfTheDay;
     }
 
     @Override
@@ -12,17 +12,17 @@ public class RouteEnd extends RouteStop {
 
     @Override
     public double getTimeWindowLowerBound() {
-        return 0.0;
+        return endOfTheDay;
     }
 
     @Override
     public double getTimeWindowUpperBound() {
-        return timeWindowUpperBound;
+        return endOfTheDay;
     }
 
     @Override
-    public double getLoadAtDeparture() {
-        return 0.0;
+    public void setLoadAtArrival(double loadAtArrival) {
+        loadAtDeparture = loadAtArrival;
     }
 
     @Override
@@ -32,10 +32,10 @@ public class RouteEnd extends RouteStop {
 
     @Override
     public RouteEnd copy() {
-        RouteEnd routeEnd = new RouteEnd(timeWindowUpperBound);
+        RouteEnd routeEnd = new RouteEnd(endOfTheDay);
         routeEnd.setArrivalTime(getArrivalTime());
         routeEnd.setDepartureTime(getDepartureTime());
-        routeEnd.setLoadAtArrival(loadAtArrival);
+        routeEnd.loadAtDeparture = loadAtDeparture;
         return routeEnd;
     }
 }
