@@ -24,7 +24,7 @@ public class TDDPDPRN {
 
         long startTime = System.nanoTime();
 
-        TabuSearch tabuSearch = new TabuSearch(10);
+        TabuSearch tabuSearch = new TabuSearch(5);
         DynamicProblemSolver dynamicProblemSolver = new DynamicProblemSolver(1.0);
 
         for (int nbClientsIndex = 0; nbClientsIndex < arrayNbClients.length; ++nbClientsIndex) {
@@ -41,7 +41,7 @@ public class TDDPDPRN {
                             InputData inputData;
                             try {
                                 inputData = new InputData(arrayNbNodes[nbNodeIndex], arrayNbClients[nbClientsIndex],
-                                        corr, index, timeWindowType, instanceRandom, 0.0);
+                                        corr, index, timeWindowType, instanceRandom, 0.5);
                             } catch (FileNotFoundException e) {
                                 // Not all parameter combinations exist
                                 continue;
@@ -50,6 +50,10 @@ public class TDDPDPRN {
 
                             Solution solution = dynamicProblemSolver.apply(inputData, instanceRandom, tabuSearch);
                             System.out.println(solution.getCost());
+
+                            for (Request request : inputData.requests) {
+                                assert solution.getNbStopsForRequest(request) == 2;
+                            }
 
 //                            time = System.nanoTime();
 //                            ArrivalTimeFunction[][] arrivalTimeFunctions =
@@ -98,7 +102,8 @@ public class TDDPDPRN {
                 }
             }
 
-//            tabuSearchTimes[nbClientsIndex] /= tabuSearch.getTotalNbIterations();
+            tabuSearchTimes[nbClientsIndex] = tabuSearch.getTimePerIteration();
+            tabuSearch.resetSearchIterations();
 
 //            StringBuilder s = new StringBuilder(String.format("Best solution average for %d clients:\n0\t1.00",
 //                    arrayNbClients[nbClientsIndex] / 2));
@@ -123,7 +128,7 @@ public class TDDPDPRN {
 //        System.out.println(String.format("inputDataReadTime = %f", inputDataReadTime));
 //        System.out.println(String.format("preprocessingTimes = %s", Arrays.toString(preprocessingTimes)));
 //        System.out.println(String.format("initialSolutionTimeAverage = %f", initialSolutionTimeAverage));
-//        System.out.println(String.format("tabuSearchTimes = %s", Arrays.toString(tabuSearchTimes)));
+        System.out.println(String.format("tabuSearchTimes = %s", Arrays.toString(tabuSearchTimes)));
 //        System.out.println(String.format("initialSolutionCost = %f", initialSolutionCost));
 //        System.out.println(String.format("afterTabuCost = %f", afterTabuCost));
 //        System.out.println(String.format("totalImprovement = %f", totalImprovement));

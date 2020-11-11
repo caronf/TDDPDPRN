@@ -254,4 +254,13 @@ public class Solution {
             route.setCurrentTime(time);
         }
     }
+
+    public int getNbStopsForRequest(Request request) {
+        int nbStops = 0;
+        for (Route route : routes) {
+            nbStops += route.getNbStopsForRequest(request);
+        }
+
+        return nbStops;
+    }
 }

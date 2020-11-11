@@ -4,8 +4,7 @@ public abstract class RouteStop implements Cloneable {
     protected double loadAtDeparture;
 
     public void setArrivalTime(double arrivalTime) {
-        assert DoubleComparator.greaterOrEqual(arrivalTime, getTimeWindowLowerBound()) &&
-                DoubleComparator.lessOrEqual(arrivalTime, getTimeWindowUpperBound());
+        assert DoubleComparator.greaterOrEqual(arrivalTime, getTimeWindowLowerBound());
         this.arrivalTime = arrivalTime;
     }
 

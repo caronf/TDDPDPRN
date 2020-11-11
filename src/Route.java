@@ -300,4 +300,15 @@ public class Route {
             ++nbSealedStops;
         }
     }
+
+    public int getNbStopsForRequest(Request request) {
+        int nbStops = 0;
+        for (RouteStop routeStop : routeStops) {
+            if (routeStop.servesRequest(request)) {
+                ++nbStops;
+            }
+        }
+
+        return nbStops;
+    }
 }
