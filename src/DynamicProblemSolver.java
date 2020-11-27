@@ -1,14 +1,26 @@
-import java.util.ArrayList;
-import java.util.Random;
+import java.util.*;
 
 public class DynamicProblemSolver {
+    private final double iterationsMultiplier;
+    private final double tabuTenureMultiplier;
+    private final double randomMovesMultiplier;
     private final double latenessWeight;
+    private final double msMultiplier;
 
-    public DynamicProblemSolver(double latenessWeight) {
+    public DynamicProblemSolver(double iterationsMultiplier, double tabuTenureMultiplier, double randomMovesMultiplier,
+                                double latenessWeight, double msMultiplier) {
+        this.iterationsMultiplier = iterationsMultiplier;
+        this.tabuTenureMultiplier = tabuTenureMultiplier;
+        this.randomMovesMultiplier = randomMovesMultiplier;
         this.latenessWeight = latenessWeight;
+        this.msMultiplier = msMultiplier;
     }
 
     public Solution apply(InputData inputData, Random random, TabuSearch tabuSearch) {
+        Date startTime = new Date();
+        Calendar calendar = Calendar.getInstance();
+        Timer timer = new Timer();
+
         ArrivalTimeFunction[][] arrivalTimeFunctions =
                 DominantShortestPath.getDominantShortestPaths(inputData);
         Solution solution = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
@@ -32,15 +44,61 @@ public class DynamicProblemSolver {
             requestsInserted.addAll(requestsToInsert);
             requestsToInsert.clear();
 
+            // Might seal newly added stops
+            solution.setCurrentTime(currentTime);
+
             int nbUnsealedStops = solution.getNbUnsealedStops();
-            tabuSearch.setStoppingCriteria(nbUnsealedStops * 10);
-            tabuSearch.setTabuTenure(nbUnsealedStops * 3 / 8);
-            tabuSearch.setNbRandomMoves(nbUnsealedStops / 2);
-            solution = tabuSearch.Apply(solution, requestsInserted, random);
+            tabuSearch.setNbIterationsPerPhase((int) (nbUnsealedStops * iterationsMultiplier));
+            tabuSearch.setTabuTenure((int) (nbUnsealedStops * tabuTenureMultiplier));
+            tabuSearch.setNbRandomMoves((int) (nbUnsealedStops * randomMovesMultiplier));
+
+            double nextDepartureTime = solution.getNextDepartureTime();
+            while (DoubleComparator.lessThan(nextDepartureTime, nextReleaseTime) && nbUnsealedStops > 0) {
+                calendar.setTime(startTime);
+                calendar.add(Calendar.MILLISECOND, (int) (nextDepartureTime * msMultiplier));
+
+                // If the calendar time is passed, the task will be scheduled as soon as possible
+                timer.schedule(new InteruptSearchTask(tabuSearch), calendar.getTime());
+                solution = tabuSearch.Apply(solution, requestsInserted, random);
+                tabuSearch.resetInterruption();
+
+                solution.setCurrentTime(nextDepartureTime);
+
+                nbUnsealedStops = solution.getNbUnsealedStops();
+                tabuSearch.setNbIterationsPerPhase((int) (nbUnsealedStops * iterationsMultiplier));
+                tabuSearch.setTabuTenure((int) (nbUnsealedStops * tabuTenureMultiplier));
+                tabuSearch.setNbRandomMoves((int) (nbUnsealedStops * randomMovesMultiplier));
+
+                nextDepartureTime = solution.getNextDepartureTime();
+            }
+
+            if (nextReleaseTime < Double.MAX_VALUE && nbUnsealedStops > 0) {
+                calendar.setTime(startTime);
+                calendar.add(Calendar.MILLISECOND, (int) (nextReleaseTime * msMultiplier));
+
+                // If the calendar time is passed, the task will be scheduled as soon as possible
+                timer.schedule(new InteruptSearchTask(tabuSearch), calendar.getTime());
+                solution = tabuSearch.Apply(solution, requestsInserted, random);
+                tabuSearch.resetInterruption();
+            }
 
             currentTime = nextReleaseTime;
         }
 
+        timer.cancel();
         return solution;
+    }
+}
+
+class InteruptSearchTask extends TimerTask {
+    private final TabuSearch tabuSearch;
+
+    public InteruptSearchTask(TabuSearch tabuSearch) {
+        this.tabuSearch = tabuSearch;
+    }
+
+    @Override
+    public void run() {
+        tabuSearch.interrupt();
     }
 }

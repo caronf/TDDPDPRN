@@ -2,14 +2,17 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class TabuSearch {
     private int searchIterations;
     private double searchTime;
-    private int stoppingCriteria;
+    private int nbIterationsPerPhase;
     private int tabuTenure;
     private final int nbDiversificationIterations;
     private int nbRandomMoves;
+    private final AtomicBoolean isInterrupted;
+
 //    private final double[] bestSolutionPercentages;
 //    private final double[] currentSolutionPercentages;
 
@@ -17,6 +20,7 @@ public class TabuSearch {
         searchIterations = 0;
         searchTime = 0;
         this.nbDiversificationIterations = nbDiversificationIterations;
+        isInterrupted = new AtomicBoolean(false);
 //        bestSolutionPercentages = new double[stoppingCriteria * (nbDiversificationIterations + 1) / 10];
 //        currentSolutionPercentages = new double[stoppingCriteria * (nbDiversificationIterations + 1) / 10];
     }
@@ -30,6 +34,14 @@ public class TabuSearch {
         searchTime = 0.0;
     }
 
+    public void interrupt() {
+        isInterrupted.set(true);
+    }
+
+    public void resetInterruption() {
+        isInterrupted.set(false);
+    }
+
 //    public double[] getBestSolutionPercentages() {
 //        return bestSolutionPercentages;
 //    }
@@ -38,8 +50,8 @@ public class TabuSearch {
 //        return currentSolutionPercentages;
 //    }
 
-    public void setStoppingCriteria(int stoppingCriteria) {
-        this.stoppingCriteria = stoppingCriteria;
+    public void setNbIterationsPerPhase(int nbIterationsPerPhase) {
+        this.nbIterationsPerPhase = nbIterationsPerPhase;
     }
 
     public void setTabuTenure(int tabuTenure) {
@@ -66,8 +78,12 @@ public class TabuSearch {
              diversificationCounter <= nbDiversificationIterations;
              ++diversificationCounter) {
             int nbIterations = 0;
-            double searchStartTime = System.nanoTime();
-            while (nbIterations < stoppingCriteria) {
+            long searchStartTime = System.nanoTime();
+            while (nbIterations < nbIterationsPerPhase) {
+                if (isInterrupted.get()) {
+                    return bestSolution;
+                }
+
                 Solution bestTemporarySolution = null;
                 Solution bestTabuTemporarySolution = null;
                 int bestRequestIndex = -1;
@@ -125,6 +141,12 @@ public class TabuSearch {
 //                    currentSolutionPercentages[(nbIterations + pastIterations) / 10 - 1] +=
 //                            currentSolution.getCost() / startingSolution.getCost();
 //                }
+
+                if (isInterrupted.get()) {
+                    searchIterations += nbIterations;
+                    searchTime += (System.nanoTime() - searchStartTime) / 1000000000.0;
+                    return bestSolution;
+                }
             }
 
             searchIterations += nbIterations;
@@ -140,9 +162,18 @@ public class TabuSearch {
                     currentSolution.removeRequest(requests.get(validRequestIndices.get(requestIndexIndex)));
                     currentSolution.insertRequestAtRandomPosition(
                             requests.get(validRequestIndices.get(requestIndexIndex)), random);
-                    pastIterations += nbIterations;
+
+                    if (DoubleComparator.lessThan(currentSolution.getCost(), bestSolution.getCost())) {
+                        bestSolution = currentSolution;
+                        break;
+                    }
+
+                    if (isInterrupted.get()) {
+                        return bestSolution;
+                    }
                 }
 
+                pastIterations += nbIterations;
                 Arrays.fill(tabuCounters, 0);
             }
         }

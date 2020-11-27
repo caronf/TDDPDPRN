@@ -62,7 +62,13 @@ public class Solution {
             routeIndexForNextInsertion = -1;
             insertPickupStop = false;
         } else {
-            routeIndex = random.nextInt(routes.size());
+            ArrayList<Integer> validRouteIndices = new ArrayList<>();
+            for (int i = 0; i < routes.size(); ++i) {
+                if (routes.get(i).isInsertionPossible()) {
+                    validRouteIndices.add(i);
+                }
+            }
+            routeIndex = validRouteIndices.get(random.nextInt(validRouteIndices.size()));
             insertPickupStop = true;
         }
 
@@ -104,13 +110,15 @@ public class Solution {
             routeIndexForNextInsertion = -1;
         } else {
             for (int i = 0; i < routes.size(); ++i) {
-                Route newRoute = routes.get(i).getRouteAfterInsertion(request);
-                if (newRoute != null) {
-                    double costIncrease = newRoute.getCost() - routes.get(i).getCost();
-                    if (costIncrease < bestCostIncrease) {
-                        bestCostIncrease = costIncrease;
-                        bestRoute = newRoute;
-                        routeIndex = i;
+                if (routes.get(i).isInsertionPossible()) {
+                    Route newRoute = routes.get(i).getRouteAfterInsertion(request);
+                    if (newRoute != null) {
+                        double costIncrease = newRoute.getCost() - routes.get(i).getCost();
+                        if (costIncrease < bestCostIncrease) {
+                            bestCostIncrease = costIncrease;
+                            bestRoute = newRoute;
+                            routeIndex = i;
+                        }
                     }
                 }
             }
@@ -155,7 +163,10 @@ public class Solution {
             ArrayList<Route> newRoutesForRequest = new ArrayList<>(routes.size());
 
             for (Route route : routes) {
-                Route newRoute = route.getRouteAfterInsertion(request);
+                Route newRoute = null;
+                if (route.isInsertionPossible()) {
+                    newRoute = route.getRouteAfterInsertion(request);
+                }
                 costIncreasesForRequest.add(newRoute == null ? Double.MAX_VALUE :
                         newRoute.getCost() - route.getCost());
                 newRoutesForRequest.add(newRoute);
@@ -262,5 +273,14 @@ public class Solution {
         }
 
         return nbStops;
+    }
+
+    public double getNextDepartureTime() {
+        double nextDepartureTime = Double.MAX_VALUE;
+        for (Route route : routes) {
+            nextDepartureTime = Math.min(nextDepartureTime, route.getNextDepartureTime());
+        }
+
+        return nextDepartureTime;
     }
 }

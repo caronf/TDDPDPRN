@@ -296,7 +296,7 @@ public class Route {
     public void setCurrentTime(double currentTime) {
         this.currentTime = currentTime;
         while (nbSealedStops < routeStops.size() &&
-                DoubleComparator.lessThan(routeStops.get(nbSealedStops - 1).getDepartureTime(), currentTime)) {
+                (DoubleComparator.lessOrEqual(routeStops.get(nbSealedStops - 1).getDepartureTime(), currentTime))) {
             ++nbSealedStops;
         }
     }
@@ -310,5 +310,15 @@ public class Route {
         }
 
         return nbStops;
+    }
+
+    public double getNextDepartureTime() {
+        return nbSealedStops < routeStops.size() ?
+                routeStops.get(nbSealedStops - 1).getDepartureTime() :
+                Double.MAX_VALUE;
+    }
+
+    public boolean isInsertionPossible() {
+        return nbSealedStops < routeStops.size();
     }
 }
