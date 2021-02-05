@@ -15,6 +15,7 @@ public class TDDPDPRN {
         double[] preprocessingTimes = new double[arrayNbNodes.length];
         double initialSolutionTimeAverage = 0.0;
         double[] tabuSearchTimes = new double[arrayNbClients.length];
+        int[] averageSearchIterations = new int[arrayNbClients.length];
         double initialSolutionCost = 0.0;
         double afterTabuCost = 0.0;
         double totalImprovement = 0.0;
@@ -104,6 +105,7 @@ public class TDDPDPRN {
             }
 
             tabuSearchTimes[nbClientsIndex] = tabuSearch.getTimePerIteration();
+            averageSearchIterations[nbClientsIndex] = tabuSearch.getAverageIterationsPerSearch();
             tabuSearch.resetSearchIterations();
 
 //            StringBuilder s = new StringBuilder(String.format("Best solution average for %d clients:\n0\t1.00",
@@ -135,5 +137,6 @@ public class TDDPDPRN {
 //        System.out.println(String.format("totalImprovement = %f", totalImprovement));
 //        System.out.println(String.format("maxTotalImprovement = %f", maxTotalImprovement));
         System.out.println(String.format("totalTime = %fs", (System.nanoTime() - startTime) / 1000000000.0));
+        System.out.println(String.format("averageSearchIterations = %s", Arrays.toString(averageSearchIterations)));
     }
 }
