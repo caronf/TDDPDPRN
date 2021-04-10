@@ -36,6 +36,9 @@ public class RouteEnd extends RouteStop {
         routeEnd.setArrivalTime(getArrivalTime());
         routeEnd.setDepartureTime(getDepartureTime());
         routeEnd.loadAtDeparture = loadAtDeparture;
+        routeEnd.setCumulativeTravelTime(cumulativeTravelTime);
+        routeEnd.setCumulativeLateness(cumulativeLateness);
+        routeEnd.setCumulativeFeasibility(cumulativeFeasibility);
         return routeEnd;
     }
 }

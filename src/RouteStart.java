@@ -3,6 +3,9 @@ public class RouteStart extends RouteStop {
         arrivalTime = 0.0;
         departureTime = 0.0;
         loadAtDeparture = 0.0;
+        cumulativeTravelTime = 0.0;
+        cumulativeLateness = 0.0;
+        cumulativeFeasibility = true;
     }
 
     @Override
@@ -36,6 +39,9 @@ public class RouteStart extends RouteStop {
         assert arrivalTime == 0.0;
         routeStart.setDepartureTime(departureTime);
         assert loadAtDeparture == 0.0;
+        assert cumulativeTravelTime == 0.0;
+        assert cumulativeLateness == 0.0;
+        assert cumulativeFeasibility;
         return routeStart;
     }
 }

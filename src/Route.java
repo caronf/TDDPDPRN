@@ -7,8 +7,6 @@ public class Route {
     private final ArrivalTimeFunction[][] arrivalTimeFunctions;
     private final double latenessWeight;
     private final double vehicleCapacity;
-    private double travelTime;
-    private double lateness;
     private double currentTime;
 
     // Stops become sealed when the vehicle is on its way and remain sealed afterwards
@@ -28,8 +26,6 @@ public class Route {
         routeEnd = new RouteEnd(depotTimeWindowUpperBound);
         routeStops.add(routeEnd);
 
-        travelTime = -1.0;
-        lateness = -1.0;
         currentTime = 0.0;
         nbSealedStops = 1;
         newRequestPickupIndex = -1;
@@ -50,8 +46,6 @@ public class Route {
         }
         routeEnd = (RouteEnd) routeStops.get(routeStops.size() - 1);
 
-        travelTime = otherRoute.travelTime;
-        lateness = otherRoute.lateness;
         currentTime = otherRoute.currentTime;
         nbSealedStops = otherRoute.nbSealedStops;
         newRequestPickupIndex = -1;
@@ -64,24 +58,15 @@ public class Route {
     }
 
     public double getCost() {
-        if (travelTime < 0.0 || lateness < 0.0) {
-            travelTime = 0.0;
-            lateness = routeStops.get(0).getLateness();
-            for (int i = 1; i < routeStops.size(); ++i) {
-                travelTime += routeStops.get(i).getArrivalTime() - routeStops.get(i - 1).getDepartureTime();
-                lateness += routeStops.get(i).getLateness();
-            }
-        }
-
-        return travelTime + latenessWeight * lateness;
+        return routeEnd.getCumulativeTravelTime() + latenessWeight * routeEnd.getCumulativeLateness();
     }
 
     public double getTravelTime() {
-        return travelTime;
+        return routeEnd.getCumulativeTravelTime();
     }
 
     public double getLateness() {
-        return lateness;
+        return routeEnd.getCumulativeLateness();
     }
 
     public int getNbUnsealedStops() {
@@ -265,32 +250,33 @@ public class Route {
         assert routeStops.get(routeStops.size() - 1) == routeEnd;
 
         for (int i = updateFromIndex; i < routeStops.size(); ++i) {
-            routeStops.get(i-1).setDepartureTime(Math.max(currentTime, Math.max(
-                    routeStops.get(i-1).getArrivalTime() + routeStops.get(i-1).getServiceTime(),
-                    arrivalTimeFunctions[routeStops.get(i-1).getNode()][routeStops.get(i).getNode()].getDepartureTime(
-                            routeStops.get(i).getTimeWindowLowerBound()))));
+            RouteStop previousStop = routeStops.get(i - 1);
+            RouteStop currentStop = routeStops.get(i);
 
-            routeStops.get(i).setArrivalTime(arrivalTimeFunctions[routeStops.get(i-1).getNode()][routeStops.get(i).getNode()].getArrivalTime(
-                    routeStops.get(i-1).getDepartureTime()));
+            double departureTime = Math.max(currentTime, Math.max(
+                    previousStop.getArrivalTime() + previousStop.getServiceTime(),
+                    arrivalTimeFunctions[previousStop.getNode()][currentStop.getNode()].getDepartureTime(
+                            currentStop.getTimeWindowLowerBound())));
+            double arrivalTime =
+                    arrivalTimeFunctions[previousStop.getNode()][currentStop.getNode()].getArrivalTime(departureTime);
 
-            routeStops.get(i).setLoadAtArrival(routeStops.get(i-1).getLoadAtDeparture());
+            previousStop.setDepartureTime(departureTime);
+            currentStop.setArrivalTime(arrivalTime);
+            currentStop.setLoadAtArrival(previousStop.getLoadAtDeparture());
+            currentStop.setCumulativeTravelTime(previousStop.getCumulativeTravelTime() + arrivalTime - departureTime);
+            currentStop.setCumulativeLateness(previousStop.getCumulativeLateness() + currentStop.getLateness());
+            currentStop.setCumulativeFeasibility(previousStop.getCumulativeFeasibility() &&
+                    DoubleComparator.lessOrEqual(currentStop.getLoadAtDeparture(), vehicleCapacity));
         }
 
+        // The only situation where the load at the end of the route is not equal
+        // to zero is when a delivery was removed and is about to be reinserted
         assert DoubleComparator.equal(routeStops.get(routeStops.size() - 2).getLoadAtDeparture(), 0.0) ||
                 previousPickupIndex < 0 && previousDeliveryIndex >= 0;
-
-        travelTime = -1.0;
-        lateness = -1.0;
     }
 
     private boolean isFeasible() {
-        for (RouteStop routeStop : routeStops) {
-            if (DoubleComparator.greaterThan(routeStop.getLoadAtDeparture(), vehicleCapacity)) {
-                return false;
-            }
-        }
-
-        return true;
+        return routeEnd.getCumulativeFeasibility();
     }
 
     public void setCurrentTime(double currentTime) {

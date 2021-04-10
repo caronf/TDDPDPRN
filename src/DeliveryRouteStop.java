@@ -41,6 +41,9 @@ public class DeliveryRouteStop extends RouteStop {
         deliveryRouteStop.setArrivalTime(arrivalTime);
         deliveryRouteStop.setDepartureTime(departureTime);
         deliveryRouteStop.loadAtDeparture = loadAtDeparture;
+        deliveryRouteStop.setCumulativeTravelTime(cumulativeTravelTime);
+        deliveryRouteStop.setCumulativeLateness(cumulativeLateness);
+        deliveryRouteStop.setCumulativeFeasibility(cumulativeFeasibility);
         return deliveryRouteStop;
     }
 }

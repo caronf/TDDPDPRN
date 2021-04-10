@@ -3,6 +3,10 @@ public abstract class RouteStop implements Cloneable {
     protected double departureTime;
     protected double loadAtDeparture;
 
+    protected double cumulativeTravelTime;
+    protected double cumulativeLateness;
+    protected boolean cumulativeFeasibility;
+
     public void setArrivalTime(double arrivalTime) {
         assert DoubleComparator.greaterOrEqual(arrivalTime, getTimeWindowLowerBound());
         this.arrivalTime = arrivalTime;
@@ -22,6 +26,30 @@ public abstract class RouteStop implements Cloneable {
 
     public double getLoadAtDeparture() {
         return loadAtDeparture;
+    }
+
+    public void setCumulativeTravelTime(double cumulativeTravelTime) {
+        this.cumulativeTravelTime = cumulativeTravelTime;
+    }
+
+    public double getCumulativeTravelTime() {
+        return cumulativeTravelTime;
+    }
+
+    public void setCumulativeLateness(double cumulativeLateness) {
+        this.cumulativeLateness = cumulativeLateness;
+    }
+
+    public double getCumulativeLateness() {
+        return cumulativeLateness;
+    }
+
+    public void setCumulativeFeasibility(boolean cumulativeFeasibility) {
+        this.cumulativeFeasibility = cumulativeFeasibility;
+    }
+
+    public boolean getCumulativeFeasibility() {
+        return cumulativeFeasibility;
     }
 
     public double getLateness() {

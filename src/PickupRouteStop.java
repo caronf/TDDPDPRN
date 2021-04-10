@@ -41,6 +41,9 @@ public class PickupRouteStop extends RouteStop {
         pickupRouteStop.setArrivalTime(arrivalTime);
         pickupRouteStop.setDepartureTime(departureTime);
         pickupRouteStop.loadAtDeparture = loadAtDeparture;
+        pickupRouteStop.setCumulativeTravelTime(cumulativeTravelTime);
+        pickupRouteStop.setCumulativeLateness(cumulativeLateness);
+        pickupRouteStop.setCumulativeFeasibility(cumulativeFeasibility);
         return pickupRouteStop;
     }
 }
