@@ -169,12 +169,15 @@ public class TabuSearch {
                     }
 
                     int requestIndexIndex = random.nextInt(validRequestIndices.size());
-                    currentSolution.removeRequest(requests.get(validRequestIndices.get(requestIndexIndex)));
-                    currentSolution.insertRequestAtRandomPosition(
-                            requests.get(validRequestIndices.get(requestIndexIndex)), random);
+                    if (currentSolution.removeRequest(requests.get(validRequestIndices.get(requestIndexIndex))) > 0) {
+                        currentSolution.insertRequestAtRandomPosition(
+                                requests.get(validRequestIndices.get(requestIndexIndex)), random);
 
-                    if (DoubleComparator.lessThan(currentSolution.getCost(), bestSolution.getCost())) {
-                        bestSolution = currentSolution;
+                        if (DoubleComparator.lessThan(currentSolution.getCost(), bestSolution.getCost())) {
+                            bestSolution = currentSolution;
+                        }
+                    } else {
+                        validRequestIndices.remove(requestIndexIndex);
                     }
                 }
 

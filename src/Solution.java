@@ -9,7 +9,8 @@ public class Solution {
     private double lateness;
     private double cost;
 
-    private boolean insertNextRequest;
+    // routeIndexForNextInsertion is used when the last request removed had
+    // a sealed pickup and indicates in which route the delivery must be reinserted
     private int routeIndexForNextInsertion;
 
     public Solution(int maxNbRoutes, ArrivalTimeFunction[][] arrivalTimeFunctions,
@@ -22,7 +23,6 @@ public class Solution {
         lateness = routes.get(0).getLateness();
         cost = routes.get(0).getCost();
 
-        insertNextRequest = true;
         routeIndexForNextInsertion = -1;
     }
 
@@ -37,7 +37,6 @@ public class Solution {
         lateness = otherSolution.lateness;
         cost = otherSolution.cost;
 
-        insertNextRequest =otherSolution.insertNextRequest;
         routeIndexForNextInsertion = otherSolution.routeIndexForNextInsertion;
     }
 
@@ -50,11 +49,6 @@ public class Solution {
     }
 
     public void insertRequestAtRandomPosition(Request request, Random random) {
-        if (!insertNextRequest) {
-            insertNextRequest = true;
-            return;
-        }
-
         int routeIndex;
         boolean insertPickupStop;
         if (routeIndexForNextInsertion >= 0) {
@@ -92,11 +86,6 @@ public class Solution {
     }
 
     public void insertRequest(Request request) {
-        if (!insertNextRequest) {
-            insertNextRequest = true;
-            return;
-        }
-
         double bestCostIncrease = Double.MAX_VALUE;
         Route bestRoute = null;
         int routeIndex = -1;
@@ -230,7 +219,6 @@ public class Solution {
     }
 
     public int removeRequest(Request request) {
-        insertNextRequest = true;
         routeIndexForNextInsertion = -1;
 
         for (int i = 0; i < routes.size(); ++i) {
@@ -252,7 +240,6 @@ public class Solution {
             }
         }
 
-        insertNextRequest = false;
         return 0;
     }
 

@@ -4,6 +4,15 @@ import java.util.Random;
 
 public class TDDPDPRN {
     public static void main(String[] args) {
+//        InputData data;
+//        try {
+//            data = new InputData(true);
+//        } catch (FileNotFoundException e) {
+//            return;
+//        }
+//
+//        DominantShortestPath.getDominantShortestPaths(data);
+
         final double latenessWeight = 1.0;
         final int[] arrayNbNodes = new int[] {50, 100, 200};
         final int[] arrayNbClients = new int[] {16, 25, 33, 50, 66, 75, 100, 133};
@@ -61,7 +70,8 @@ public class TDDPDPRN {
 //                            ArrivalTimeFunction[][] arrivalTimeFunctions =
 //                                    DominantShortestPath.getDominantShortestPaths(inputData);
 //                            double preprocessingTime = (System.nanoTime() - time) / 1000000000.0;
-//                            preprocessingTimes[nbNodeIndex] += preprocessingTime / 1000000000.0;
+//                            System.out.println(preprocessingTime);
+                            //preprocessingTimes[nbNodeIndex] += preprocessingTime / 1000000000.0;
 //
 //                            time = System.nanoTime();
 //                            Solution initialSolution = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
@@ -131,12 +141,12 @@ public class TDDPDPRN {
 //        System.out.println(String.format("inputDataReadTime = %f", inputDataReadTime));
 //        System.out.println(String.format("preprocessingTimes = %s", Arrays.toString(preprocessingTimes)));
 //        System.out.println(String.format("initialSolutionTimeAverage = %f", initialSolutionTimeAverage));
-        System.out.println(String.format("tabuSearchTimes = %s", Arrays.toString(tabuSearchTimes)));
 //        System.out.println(String.format("initialSolutionCost = %f", initialSolutionCost));
 //        System.out.println(String.format("afterTabuCost = %f", afterTabuCost));
 //        System.out.println(String.format("totalImprovement = %f", totalImprovement));
 //        System.out.println(String.format("maxTotalImprovement = %f", maxTotalImprovement));
         System.out.println(String.format("totalTime = %fs", (System.nanoTime() - startTime) / 1000000000.0));
         System.out.println(String.format("averageSearchIterations = %s", Arrays.toString(averageSearchIterations)));
+        System.out.println(String.format("tabuSearchTimes = %s", Arrays.toString(tabuSearchTimes)));
     }
 }

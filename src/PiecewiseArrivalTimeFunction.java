@@ -9,6 +9,8 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
     }
 
     public PiecewiseArrivalTimeFunction(double[] stepTimes, double baseTravelTime, double[] speedFactors) {
+        assert stepTimes.length == speedFactors.length + 1;
+
         points = new ArrayList<>(stepTimes.length * 2 - 1);
         points.add(new double[] {0.0, getNeighborArrivalTime(baseTravelTime, 0, stepTimes, speedFactors)});
 

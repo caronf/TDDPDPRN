@@ -1,16 +1,16 @@
 import java.io.File;
 import java.io.FileNotFoundException;
-import java.util.ArrayList;
-import java.util.Random;
-import java.util.Scanner;
+import java.util.*;
 
 public class InputData {
  	//static final int depotIndex = 0;
+	public final int nbNodes;
     public final double[][] distanceMatrix;
     public final int[][] speedFunctionMatrix;
     public final ArrayList<Request> requests;
 	public final ArrayList<double[][]> speedFunctionList;
-	public final ArrivalTimeFunction[][] arcArrivalTimeFunctions;
+	//public final ArrivalTimeFunction[][] arcArrivalTimeFunctions;
+	public final HashMap<Integer, HashMap<Integer, ArrivalTimeFunction>> arcArrivalTimeFunctions;
     public final double[] proposedDepartTime;
     public final double depotTimeWindowUpperBound;
     public final int nbVehicles;
@@ -18,6 +18,7 @@ public class InputData {
 
     public InputData(int nbNodes, int nbClients, double corr, int index, String tw, Random random, double dynamismRatio)
 			throws FileNotFoundException {
+    	this.nbNodes = nbNodes;
 		distanceMatrix = new double[nbNodes][nbNodes];
 		speedFunctionMatrix = new int[nbNodes][nbNodes];
 		String[] line;
@@ -39,7 +40,7 @@ public class InputData {
 		sc = new Scanner(new File(String.format("LL-instances_TDVRPTW/travelTimes/LL-%d_%d_corr%.2f_%d.t",
 				nbNodes, nbClients, corr, index)));
 
-		// The first line is not important
+		// The first line is irrelevant
 		sc.nextLine();
 		while(sc.hasNextLine()) {
 		    line = sc.nextLine().trim().split("\\s+");
@@ -135,12 +136,12 @@ public class InputData {
 
 		double[][] fct;
 		speedFunctionList = new ArrayList<>();
-		arcArrivalTimeFunctions = new ArrivalTimeFunction[nbNodes][nbNodes];
+		arcArrivalTimeFunctions = new HashMap<>();
 		while(sc.hasNextLine()) {
 			line = sc.nextLine().trim().split("\\s+");
 		    
-		    int from =Integer.parseInt(line[0]);
-		    int to =Integer.parseInt(line[1]);
+		    int from = Integer.parseInt(line[0]);
+		    int to = Integer.parseInt(line[1]);
 		    int typ = Integer.parseInt(line[2]);
 
 		    fct = new double[nbIntervals][2];
@@ -150,8 +151,13 @@ public class InputData {
 			  	fct[i][1] = (distanceMatrix[from][to] / travelTimes[from][to]) * speedFactors[typ][i];
 		  	}
 
-			arcArrivalTimeFunctions[from][to] =
-					new PiecewiseArrivalTimeFunction(proposedDepartTime, travelTimes[from][to], speedFactors[typ]);
+		    if (!arcArrivalTimeFunctions.containsKey(from)) {
+		    	arcArrivalTimeFunctions.put(from, new HashMap<>());
+			}
+
+		    assert !arcArrivalTimeFunctions.get(from).containsKey(to);
+			arcArrivalTimeFunctions.get(from).put(to,
+					new PiecewiseArrivalTimeFunction(proposedDepartTime, travelTimes[from][to], speedFactors[typ]));
 //			for (double departureTime = 0.0; departureTime <= proposedDepartTime[proposedDepartTime.length - 1] * 3;
 //				 departureTime += 10.0) {
 //				double arrivalTime1 = DominantShortestPath.getNeighborArrivalTime(distanceMatrix[from][to], departureTime, fct);
@@ -170,4 +176,122 @@ public class InputData {
 		}
 		sc.close();
     }
+
+	public InputData(boolean bigFile) throws FileNotFoundException {
+		distanceMatrix = null;
+		speedFunctionMatrix = null;
+		requests = null;
+		speedFunctionList = null;
+		proposedDepartTime = null;
+		depotTimeWindowUpperBound = 0.0;
+		nbVehicles = 0;
+		vehicleCapacity = 0.0;
+
+		String filename;
+		String separator;
+		int yearIndex;
+		int trailingCells;
+		if (bigFile) {
+			filename = "Maha_Gmira_data/filtered_more5.csv";
+			separator = ";";
+			yearIndex = 0;
+			trailingCells = 0;
+		} else {
+			filename = "Maha_Gmira_data/df_vector_cl.csv";
+			separator = ",";
+			yearIndex = 1;
+			trailingCells = 2;
+		}
+
+		double maxDeviation = 0.0;
+		int maxDeviationSegment = -1;
+		nbNodes = 51317;
+		//HashMap<Integer, Integer> nodes = new HashMap<>(nbNodes);
+		HashSet<Integer> toNodes = new HashSet<>();
+		arcArrivalTimeFunctions = new HashMap<>();
+		Scanner sc = new Scanner(new File(filename));
+		int nbLines = 0;
+		sc.nextLine();
+		while(sc.hasNextLine()) {
+			String[] line = sc.nextLine().split(separator);
+			//if (Integer.parseInt(line[yearIndex]) == 2014 &&
+					//Integer.parseInt(line[yearIndex + 1]) == 1 && Integer.parseInt(line[yearIndex + 2]) == 1) {
+				int i = Integer.parseInt(line[yearIndex + 6]);
+				int j = Integer.parseInt(line[yearIndex + 7]);
+
+				if (!arcArrivalTimeFunctions.containsKey(i)) {
+					arcArrivalTimeFunctions.put(i, new HashMap<>());
+				}
+
+				if (!arcArrivalTimeFunctions.get(i).containsKey(j)) {
+					arcArrivalTimeFunctions.get(i).put(j, new PiecewiseArrivalTimeFunction(
+							new double[]{0.0, 100.0}, Double.parseDouble(line[yearIndex + 8]), new double[]{1.0}));
+					//toNodes.add(j);
+				}
+
+				if (!arcArrivalTimeFunctions.containsKey(j)) {
+					arcArrivalTimeFunctions.put(j, new HashMap<>());
+				}
+
+				if (!arcArrivalTimeFunctions.get(j).containsKey(i)) {
+					arcArrivalTimeFunctions.get(j).put(i, new PiecewiseArrivalTimeFunction(
+							new double[]{0.0, 100.0}, Double.parseDouble(line[yearIndex + 8]), new double[]{1.0}));
+				}
+
+				double averageSpeed = 0.0;
+				for (int k = yearIndex + 8; k < line.length - trailingCells; ++k) {
+					averageSpeed += Double.parseDouble(line[k]);
+				}
+				averageSpeed /= line.length - trailingCells - (yearIndex + 8);
+
+				double deviation = 0.0;
+				for (int k = yearIndex + 8; k < line.length - trailingCells; ++k) {
+					deviation += Math.abs(averageSpeed - Double.parseDouble(line[k]));
+				}
+
+				if (deviation > maxDeviation) {
+					maxDeviation = deviation;
+					maxDeviationSegment = Integer.parseInt(line[yearIndex + 5]);
+				}
+
+				nbLines++;
+			//}
+		}
+
+//		HashSet<Integer> nodesOnlyFrom = new HashSet<>(arcArrivalTimeFunctions2.keySet());
+//		nodesOnlyFrom.removeAll(toNodes);
+//
+//		HashSet<Integer> nodesOnlyTo = new HashSet<>(toNodes);
+//		nodesOnlyTo.removeAll(arcArrivalTimeFunctions2.keySet());
+
+//		assert nodes.size() == nbNodes;
+//
+//		for (int i = 0; i < nbNodes; i++) {
+//			assert arcArrivalTimeFunctions2.containsKey(i);
+//			assert arcArrivalTimeFunctions2.get(i).size() > 0;
+//		}
+
+//		HashSet<Integer> visitedNodes = new HashSet<>();
+//		Queue<Integer> nodesToVisit = new ArrayDeque<>();
+//		for (int i : arcArrivalTimeFunctions2.keySet()) {
+//			nodesToVisit.add(i);
+//			break;
+//		}
+//		nodesToVisit.add(164839);
+
+//		while (!nodesToVisit.isEmpty()) {
+//			int i = nodesToVisit.remove();
+//			if (!visitedNodes.contains(i)) {
+//				visitedNodes.add(i);
+//				if (arcArrivalTimeFunctions2.containsKey(i)) {
+//					nodesToVisit.addAll(arcArrivalTimeFunctions2.get(i).keySet());
+//				}
+//			}
+//		}
+//
+//		HashSet<Integer> unvisitedNodes = new HashSet<>(arcArrivalTimeFunctions2.keySet());
+//		unvisitedNodes.removeAll(visitedNodes);
+
+		return;
+	}
 }

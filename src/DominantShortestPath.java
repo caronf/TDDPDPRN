@@ -1,6 +1,6 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
     // bestPaths[i] : index of the best path between points i and i+1
@@ -9,7 +9,8 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
     // Complete paths (may be useful to get an itinerary)
     ArrayList<ArrayList<Integer>> paths;
 
-    public DominantShortestPath(ArrayList<ArrayList<Integer>> paths, ArrivalTimeFunction[][] arcArrivalTimeFunctions) {
+    public DominantShortestPath(ArrayList<ArrayList<Integer>> paths,
+                                HashMap<Integer, HashMap<Integer, ArrivalTimeFunction>> arcArrivalTimeFunctions) {
         this.paths = paths;
         bestPaths = new ArrayList<>();
 
@@ -20,10 +21,11 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
         for (int i = 0; i < paths.size(); ++i) {
             ArrayList<Integer> path = paths.get(i);
             assert path.size() >= 2;
-            arrivalTimeFunctions[i] = (PiecewiseArrivalTimeFunction) arcArrivalTimeFunctions[path.get(0)][path.get(1)];
+            arrivalTimeFunctions[i] =
+                    (PiecewiseArrivalTimeFunction) arcArrivalTimeFunctions.get(path.get(0)).get(path.get(1));
             for (int j = 2; j < path.size(); ++j) {
                 arrivalTimeFunctions[i] = new PiecewiseArrivalTimeFunction(arrivalTimeFunctions[i],
-                        (PiecewiseArrivalTimeFunction) arcArrivalTimeFunctions[path.get(j - 1)][path.get(j)]);
+                        (PiecewiseArrivalTimeFunction) arcArrivalTimeFunctions.get(path.get(j - 1)).get(path.get(j)));
             }
 
             assert DoubleComparator.equal(arrivalTimeFunctions[i].points.get(0)[0], 0.0);
@@ -149,13 +151,12 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
     }
 
     public static ArrivalTimeFunction[][] getDominantShortestPaths(InputData inputData) {
-        int nbNodes = inputData.distanceMatrix.length;
-        ArrivalTimeFunction[][] dominantShortestPaths = new ArrivalTimeFunction[nbNodes][nbNodes];
+        ArrivalTimeFunction[][] dominantShortestPaths = new ArrivalTimeFunction[inputData.nbNodes][inputData.nbNodes];
 
-        for (int departureNode = 0; departureNode < nbNodes; ++departureNode) {
+        for (int departureNode = 0; departureNode < inputData.nbNodes; ++departureNode) {
             // pathsPerDestination[i][j] : Path j to destination i
-            ArrayList<ArrayList<ArrayList<Integer>>> pathsPerDestination = new ArrayList<>(nbNodes);
-            for (int i = 0; i < nbNodes; ++i) {
+            ArrayList<ArrayList<ArrayList<Integer>>> pathsPerDestination = new ArrayList<>(inputData.nbNodes);
+            for (int i = 0; i < inputData.nbNodes; ++i) {
                 pathsPerDestination.add(new ArrayList<>());
             }
 
@@ -163,15 +164,15 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
             pathsPerDestination.get(departureNode).add(new ArrayList<>());
             pathsPerDestination.get(departureNode).get(0).add(departureNode);
 
-            double[] arrivalTimes = new double[nbNodes];
-            int[] previousNodes = new int[nbNodes];
-            int[] pathIndices = new int[nbNodes];
-            HashSet<Integer> nodesToVisit = new HashSet<>(nbNodes);
+            double[] arrivalTimes = new double[inputData.nbNodes];
+            int[] previousNodes = new int[inputData.nbNodes];
+            int[] pathIndices = new int[inputData.nbNodes];
+            HashSet<Integer> nodesToVisit = new HashSet<>(inputData.nbNodes);
 
             for (double departureTime : inputData.proposedDepartTime) {
                 // Calculate the best path from departureNode to every other node
                 // when leaving at departureTime using Dijkstra's algorithm
-                for (int i = 0; i < nbNodes; i++) {
+                for (int i = 0; i < inputData.nbNodes; i++) {
                     arrivalTimes[i] = Double.MAX_VALUE;
                     previousNodes[i] = -1;
                     nodesToVisit.add(i);
@@ -193,6 +194,7 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
                                 nextNode = i;
                             }
                         }
+                        assert arrivalTimes[nextNode] < Double.MAX_VALUE;
 
                         // Save the path to the next node
                         nodesToVisit.remove(nextNode);
@@ -209,14 +211,15 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
                     }
 
                     // Update the arrival times of unvisited neighbors
-                    for (int i : nodesToVisit) {
-                        if(DoubleComparator.greaterThan(inputData.distanceMatrix[nextNode][i], 0.0)) {
-                            double arrivalTime = inputData.arcArrivalTimeFunctions[nextNode][i].getArrivalTime(
-                                    arrivalTimes[nextNode]);
-
-                            if (DoubleComparator.lessThan(arrivalTime, arrivalTimes[i])) {
-                                arrivalTimes[i] = arrivalTime;
-                                previousNodes[i] = nextNode;
+                    if (inputData.arcArrivalTimeFunctions.containsKey(nextNode)) {
+                        for (HashMap.Entry<Integer, ArrivalTimeFunction> entry :
+                                inputData.arcArrivalTimeFunctions.get(nextNode).entrySet()) {
+                            if (nodesToVisit.contains(entry.getKey())) {
+                                double arrivalTime = entry.getValue().getArrivalTime(arrivalTimes[nextNode]);
+                                if (DoubleComparator.lessThan(arrivalTime, arrivalTimes[entry.getKey()])) {
+                                    arrivalTimes[entry.getKey()] = arrivalTime;
+                                    previousNodes[entry.getKey()] = nextNode;
+                                }
                             }
                         }
                     }
@@ -225,11 +228,10 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
                 }
             }
 
-            for (int arrivalNode = 0; arrivalNode < nbNodes; ++arrivalNode) {
+            for (int arrivalNode = 0; arrivalNode < inputData.nbNodes; ++arrivalNode) {
                 if (departureNode == arrivalNode) {
                     dominantShortestPaths[departureNode][arrivalNode] = new ImmediateArrivalTimeFunction();
-                }
-                else {
+                } else {
                     dominantShortestPaths[departureNode][arrivalNode] = new DominantShortestPath(
                             pathsPerDestination.get(arrivalNode), inputData.arcArrivalTimeFunctions);
                 }

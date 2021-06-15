@@ -198,7 +198,7 @@ public class Route {
     private void insertRequest(Request request) {
         newRequestPickupIndex = nbSealedStops;
         if (previousPickupIndex == nbSealedStops && previousDeliveryIndex == nbSealedStops + 1) {
-            assert nbSealedStops <= routeStops.size() - 2;
+            assert nbSealedStops + 2 <= routeStops.size() ;
             newRequestDeliveryIndex = nbSealedStops + 2;
         } else {
             newRequestDeliveryIndex = nbSealedStops + 1;
@@ -214,11 +214,11 @@ public class Route {
         int updateFromIndex = Integer.MAX_VALUE;
 
         do {
-            if (newRequestDeliveryIndex == routeStops.size() - 2) {
-                if (newRequestPickupIndex == routeStops.size() - 3) {
-                    return false;
-                }
+            if (newRequestPickupIndex == routeStops.size() - 3) {
+                return false;
+            }
 
+            if (newRequestDeliveryIndex == routeStops.size() - 2) {
                 // Move the pickup point forward in the route
                 RouteStop pickupRouteStop = routeStops.get(newRequestPickupIndex);
                 routeStops.set(newRequestPickupIndex, routeStops.get(newRequestPickupIndex + 1));
