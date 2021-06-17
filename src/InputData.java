@@ -12,9 +12,10 @@ public class InputData {
 	//public final ArrivalTimeFunction[][] arcArrivalTimeFunctions;
 	public final HashMap<Integer, HashMap<Integer, ArrivalTimeFunction>> arcArrivalTimeFunctions;
     public final double[] proposedDepartTime;
-    public final double depotTimeWindowUpperBound;
+    public final double endOfTheDay;
     public final int nbVehicles;
     public final double vehicleCapacity;
+    public final double returnTime;
 
     public InputData(int nbNodes, int nbClients, double corr, int index, String tw, Random random, double dynamismRatio)
 			throws FileNotFoundException {
@@ -58,7 +59,7 @@ public class InputData {
 
 		line = sc.nextLine().trim().split("\\s+");
 		assert Integer.parseInt(line[0]) == 0;
-		depotTimeWindowUpperBound = Double.parseDouble(line[5]);
+		endOfTheDay = Double.parseDouble(line[5]);
 
 		int nbRequests = nbClients / 2;
 		requests = new ArrayList<>(nbRequests);
@@ -70,6 +71,7 @@ public class InputData {
 			staticRequestIndices.remove(random.nextInt(staticRequestIndices.size()));
 		}
 
+		double maxArrivalTime = 0.0;
 		while(sc.hasNextLine()) {
 			line = sc.nextLine().trim().split("\\s+");
 			if (!sc.hasNextLine()) {
@@ -88,27 +90,32 @@ public class InputData {
 			double timeWindowLowerBound2 = Double.parseDouble(line[4]);
 			double timeWindowUpperBound2 = Double.parseDouble(line[5]);
 
-			assert timeWindowLowerBound1 < depotTimeWindowUpperBound &&
-					timeWindowLowerBound2 < depotTimeWindowUpperBound &&
-					timeWindowUpperBound1 < depotTimeWindowUpperBound &&
-					timeWindowUpperBound2 < depotTimeWindowUpperBound;
+			assert timeWindowLowerBound1 < endOfTheDay &&
+					timeWindowLowerBound2 < endOfTheDay &&
+					timeWindowUpperBound1 < endOfTheDay &&
+					timeWindowUpperBound2 < endOfTheDay;
 
 			// Select the earliest time window end (or start in case of equality) as the pickup point
+			double arrivalTime;
 			if (timeWindowUpperBound1 < timeWindowUpperBound2 ||
 					timeWindowUpperBound1 == timeWindowUpperBound2 && timeWindowLowerBound1 <= timeWindowLowerBound2) {
+				arrivalTime = random.nextDouble() * timeWindowLowerBound1;
 				requests.add(new Request(node1, node2, load,
 						timeWindowLowerBound1, timeWindowUpperBound1, 0.0,
 						timeWindowLowerBound2, timeWindowUpperBound2, 0.0,
-						staticRequestIndices.contains(requests.size()) ? 0.0 :
-								random.nextDouble() * timeWindowLowerBound1));
+						staticRequestIndices.contains(requests.size()) ? 0.0 : arrivalTime));
 			} else {
+				arrivalTime = random.nextDouble() * timeWindowLowerBound2;
 				requests.add(new Request(node2, node1, load,
 						timeWindowLowerBound2, timeWindowUpperBound2, 0.0,
 						timeWindowLowerBound1, timeWindowUpperBound1, 0.0,
-						staticRequestIndices.contains(requests.size()) ? 0.0 :
-								random.nextDouble() * timeWindowLowerBound2));
+						staticRequestIndices.contains(requests.size()) ? 0.0 : arrivalTime));
 			}
+
+			maxArrivalTime = Math.max(maxArrivalTime, arrivalTime);
 		}
+
+		returnTime = (maxArrivalTime + endOfTheDay) / 2.0;
 		sc.close();
 
 		sc = new Scanner(new File(String.format("LL-instances_TDVRPTW/arcTypes/LL-%d_%d.txt", nbNodes, index)));
@@ -123,7 +130,7 @@ public class InputData {
 		line = sc.nextLine().trim().split("\\s+");
 
 		for (int i = 0; i < nbIntervals; ++i) {
-			proposedDepartTime[i + 1] = Double.parseDouble(line[i]) * depotTimeWindowUpperBound;
+			proposedDepartTime[i + 1] = Double.parseDouble(line[i]) * endOfTheDay;
 		}
 
 		for (int j = 0; j < nbTypes; ++j) {
@@ -183,9 +190,10 @@ public class InputData {
 		requests = null;
 		speedFunctionList = null;
 		proposedDepartTime = null;
-		depotTimeWindowUpperBound = 0.0;
+		endOfTheDay = 0.0;
 		nbVehicles = 0;
 		vehicleCapacity = 0.0;
+		returnTime = 0.0;
 
 		String filename;
 		String separator;

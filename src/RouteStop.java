@@ -8,7 +8,6 @@ public abstract class RouteStop implements Cloneable {
     protected boolean cumulativeFeasibility;
 
     public void setArrivalTime(double arrivalTime) {
-        assert DoubleComparator.greaterOrEqual(arrivalTime, getTimeWindowLowerBound());
         this.arrivalTime = arrivalTime;
     }
 

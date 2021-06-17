@@ -133,10 +133,6 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
             }
         }
 
-        // The travel time should be the same for the first and last point
-        assert DoubleComparator.equal(points.get(0)[1],
-                points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]);
-
         // The arrival time should correspond to the best path for any departure time
 //        for (double departureTime = 0.0;
 //             DoubleComparator.lessOrEqual(departureTime, points.get(points.size() - 1)[0] * 3);

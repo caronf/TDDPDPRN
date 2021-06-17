@@ -13,7 +13,6 @@ public class TDDPDPRN {
 //
 //        DominantShortestPath.getDominantShortestPaths(data);
 
-        final double latenessWeight = 1.0;
         final int[] arrayNbNodes = new int[] {50, 100, 200};
         final int[] arrayNbClients = new int[] {16, 25, 33, 50, 66, 75, 100, 133};
         final double[] arrayCorr = new double[] {0.02, 0.5, 0.98};
@@ -36,7 +35,7 @@ public class TDDPDPRN {
 
         TabuSearch tabuSearch = new TabuSearch(Integer.MAX_VALUE);
         DynamicProblemSolver dynamicProblemSolver = new DynamicProblemSolver(10,
-                3.0 / 8.0, 1.0 / 2.0,1.0, 1000);
+                3.0 / 8.0, 1.0 / 2.0, 1.0, 1.0, 1000);
 
         for (int nbClientsIndex = 0; nbClientsIndex < arrayNbClients.length; ++nbClientsIndex) {
             int nbInstancesForNbClients = 0;

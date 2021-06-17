@@ -6,7 +6,9 @@ public class Route {
     private final RouteEnd routeEnd;
     private final ArrivalTimeFunction[][] arrivalTimeFunctions;
     private final double latenessWeight;
+    private final double overtimeWeight;
     private final double vehicleCapacity;
+    private final double returnTime;
     private double currentTime;
 
     // Stops become sealed when the vehicle is on its way and remain sealed afterwards
@@ -20,7 +22,7 @@ public class Route {
     private int previousDeliveryIndex;
 
     public Route(ArrivalTimeFunction[][] arrivalTimeFunctions, double depotTimeWindowUpperBound,
-                 double latenessWeight, double vehicleCapacity) {
+                 double latenessWeight, double overtimeWeight, double vehicleCapacity, double returnTime) {
         routeStops = new ArrayList<>();
         routeStops.add(new RouteStart());
         routeEnd = new RouteEnd(depotTimeWindowUpperBound);
@@ -34,7 +36,9 @@ public class Route {
         previousDeliveryIndex = -1;
         this.arrivalTimeFunctions = arrivalTimeFunctions;
         this.latenessWeight = latenessWeight;
+        this.overtimeWeight = overtimeWeight;
         this.vehicleCapacity = vehicleCapacity;
+        this.returnTime = returnTime;
 
         updateStops(1);
     }
@@ -54,11 +58,15 @@ public class Route {
         previousDeliveryIndex = otherRoute.previousDeliveryIndex;
         arrivalTimeFunctions = otherRoute.arrivalTimeFunctions;
         latenessWeight = otherRoute.latenessWeight;
+        overtimeWeight = otherRoute.overtimeWeight;
         vehicleCapacity = otherRoute.vehicleCapacity;
+        returnTime = otherRoute.returnTime;
     }
 
     public double getCost() {
-        return routeEnd.getCumulativeTravelTime() + latenessWeight * routeEnd.getCumulativeLateness();
+        return routeEnd.getCumulativeTravelTime() +
+                latenessWeight * routeEnd.getCumulativeLateness() +
+                overtimeWeight * routeEnd.getOvertime();
     }
 
     public double getTravelTime() {
@@ -253,10 +261,14 @@ public class Route {
             RouteStop previousStop = routeStops.get(i - 1);
             RouteStop currentStop = routeStops.get(i);
 
-            double departureTime = Math.max(currentTime, Math.max(
-                    previousStop.getArrivalTime() + previousStop.getServiceTime(),
-                    arrivalTimeFunctions[previousStop.getNode()][currentStop.getNode()].getDepartureTime(
-                            currentStop.getTimeWindowLowerBound())));
+            double waitEndTime = arrivalTimeFunctions[previousStop.getNode()][currentStop.getNode()].getDepartureTime(
+                    currentStop.getTimeWindowLowerBound());
+            if (currentStop == routeEnd && DoubleComparator.lessThan(returnTime, waitEndTime)) {
+                waitEndTime = returnTime;
+            }
+
+            double departureTime = Math.max(currentTime,
+                    Math.max(previousStop.getArrivalTime() + previousStop.getServiceTime(), waitEndTime));
             double arrivalTime =
                     arrivalTimeFunctions[previousStop.getNode()][currentStop.getNode()].getArrivalTime(departureTime);
 

@@ -5,14 +5,18 @@ public class DynamicProblemSolver {
     private final double tabuTenureMultiplier;
     private final double randomMovesMultiplier;
     private final double latenessWeight;
+    private final double overtimeWeight;
+
+    // Multiply the time values by this multiplier to obtain milliseconds
     private final double msMultiplier;
 
     public DynamicProblemSolver(double iterationsMultiplier, double tabuTenureMultiplier, double randomMovesMultiplier,
-                                double latenessWeight, double msMultiplier) {
+                                double latenessWeight, double overtimeWeight, double msMultiplier) {
         this.iterationsMultiplier = iterationsMultiplier;
         this.tabuTenureMultiplier = tabuTenureMultiplier;
         this.randomMovesMultiplier = randomMovesMultiplier;
         this.latenessWeight = latenessWeight;
+        this.overtimeWeight = overtimeWeight;
         this.msMultiplier = msMultiplier;
     }
 
@@ -24,7 +28,8 @@ public class DynamicProblemSolver {
         ArrivalTimeFunction[][] arrivalTimeFunctions =
                 DominantShortestPath.getDominantShortestPaths(inputData);
         Solution solution = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
-                inputData.depotTimeWindowUpperBound, latenessWeight, inputData.vehicleCapacity);
+                inputData.endOfTheDay, latenessWeight, overtimeWeight,
+                inputData.vehicleCapacity, inputData.returnTime);
         double currentTime = 0.0;
         ArrayList<Request> requestsToInsert = new ArrayList<>();
         ArrayList<Request> requestsInserted = new ArrayList<>(inputData.requests.size());

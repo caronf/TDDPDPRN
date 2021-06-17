@@ -13,10 +13,11 @@ public class Solution {
     // a sealed pickup and indicates in which route the delivery must be reinserted
     private int routeIndexForNextInsertion;
 
-    public Solution(int maxNbRoutes, ArrivalTimeFunction[][] arrivalTimeFunctions,
-                    double depotTimeWindowUpperBound, double latenessWeight, double vehicleCapacity) {
+    public Solution(int maxNbRoutes, ArrivalTimeFunction[][] arrivalTimeFunctions, double depotTimeWindowUpperBound,
+                    double latenessWeight, double overtimeWeight, double vehicleCapacity, double returnTime) {
         routes = new ArrayList<>();
-        routes.add(new Route(arrivalTimeFunctions, depotTimeWindowUpperBound, latenessWeight, vehicleCapacity));
+        routes.add(new Route(arrivalTimeFunctions, depotTimeWindowUpperBound,
+                latenessWeight, overtimeWeight, vehicleCapacity, returnTime));
 
         this.maxNbRoutes = maxNbRoutes;
         travelTime = routes.get(0).getTravelTime();

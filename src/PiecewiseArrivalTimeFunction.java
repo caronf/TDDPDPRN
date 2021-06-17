@@ -17,17 +17,9 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         for (int i = 1; i < stepTimes.length; ++i) {
             // Arrival at current step time
             double departureTime = getNeighborDepartureTime(baseTravelTime, i, stepTimes, speedFactors);
-            double arrivalTime = stepTimes[i];
-
-            if (departureTime < 0.0) {
-                // Adjust point so that the departure time is within the domain
-                double adjustment = stepTimes[stepTimes.length - 1] *
-                        Math.ceil(-departureTime / stepTimes[stepTimes.length - 1]);
-                departureTime += adjustment;
-                arrivalTime += adjustment;
+            if (DoubleComparator.greaterThan(departureTime, 0.0)) {
+                points.add(new double[] {departureTime, stepTimes[i]});
             }
-
-            points.add(new double[] {departureTime, arrivalTime});
 
             // Departure at current step time
             points.add(new double[] {stepTimes[i], getNeighborArrivalTime(baseTravelTime, i, stepTimes, speedFactors)});
@@ -45,10 +37,6 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
                 ++i;
             }
         }
-
-        // The travel time should be the same for the first and last point
-        assert DoubleComparator.equal(points.get(0)[1] - points.get(0)[0],
-                points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]);
     }
 
     // Concatenate two piecewise arrival time functions
@@ -63,19 +51,9 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
 
         for (double[] point : piecewiseArrivalTimeFunction2.points) {
             double departureTime = piecewiseArrivalTimeFunction1.getDepartureTime(point[0]);
-            double arrivalTime = point[1];
-
-            if (departureTime < 0.0) {
-                // Adjust point so that the departure time is within the domain
-                double adjustment =
-                        piecewiseArrivalTimeFunction1.points.get(piecewiseArrivalTimeFunction1.points.size() - 1)[0] *
-                                Math.ceil(-departureTime / piecewiseArrivalTimeFunction1.points.get(
-                                        piecewiseArrivalTimeFunction1.points.size() - 1)[0]);
-                departureTime += adjustment;
-                arrivalTime += adjustment;
+            if (DoubleComparator.greaterThan(departureTime, 0.0)) {
+                points.add(new double[] {departureTime, point[1]});
             }
-
-            points.add(new double[] {departureTime, arrivalTime});
         }
 
         points.sort(Comparator.comparingDouble(a -> a[0]));
@@ -90,22 +68,21 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
                 ++i;
             }
         }
-
-        // The travel time should be the same for the first and last point
-        assert DoubleComparator.equal(points.get(0)[1] - points.get(0)[0],
-                points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0]);
     }
 
     @Override
     public double getArrivalTime(double departureTime) {
         assert departureTime >= 0.0;
-        double departureTimeInDomain = departureTime % points.get(points.size() - 1)[0];
+
+        if (DoubleComparator.greaterOrEqual(departureTime, points.get(points.size() - 1)[0])) {
+            return points.get(points.size() - 1)[1] + departureTime - points.get(points.size() - 1)[0];
+        }
 
         int previousPoint = 0;
         int nextPoint = points.size() - 1;
         while (previousPoint < nextPoint - 1) {
             int medianPoint = (previousPoint + nextPoint) / 2;
-            if (DoubleComparator.lessThan(departureTimeInDomain, points.get(medianPoint)[0])) {
+            if (DoubleComparator.lessThan(departureTime, points.get(medianPoint)[0])) {
                 nextPoint = medianPoint;
             } else {
                 previousPoint = medianPoint;
@@ -116,31 +93,29 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
 
         // Perform a linear interpolation between previousPoint and nextPoint
         assert DoubleComparator.greaterThan(points.get(nextPoint)[0], points.get(previousPoint)[0]);
-        double arrivalTime = points.get(previousPoint)[1] +
-                (departureTimeInDomain - points.get(previousPoint)[0]) *
+        double arrivalTime = points.get(previousPoint)[1] + (departureTime - points.get(previousPoint)[0]) *
                 (points.get(nextPoint)[1] - points.get(previousPoint)[1]) /
                 (points.get(nextPoint)[0] - points.get(previousPoint)[0]);
-        arrivalTime += departureTime - departureTimeInDomain;
         assert DoubleComparator.greaterOrEqual(arrivalTime, departureTime);
-
         return arrivalTime;
     }
 
     @Override
     public double getDepartureTime(double arrivalTime) {
-        assert arrivalTime >= 0.0;
-        double codomainSpan = points.get(points.size() - 1)[1] - points.get(0)[1];
+        if (DoubleComparator.lessThan(arrivalTime, points.get(0)[1])) {
+            // Any negative departure time will indicate the impossibility of this arrival time
+            return -1.0;
+        }
 
-        // Should be (arrivalTime - points.get(0)[1]) % codomainSpan + points.get(0)[1]
-        // but the extra operations ensure that the modulo doesn't give a negative result
-        double arrivalTimeInCodomain =
-                ((arrivalTime - points.get(0)[1]) % codomainSpan + codomainSpan) % codomainSpan + points.get(0)[1];
+        if (DoubleComparator.greaterOrEqual(arrivalTime, points.get(points.size() - 1)[1])) {
+            return points.get(points.size() - 1)[0] + arrivalTime - points.get(points.size() - 1)[1];
+        }
 
         int previousPoint = 0;
         int nextPoint = points.size() - 1;
         while (previousPoint < nextPoint - 1) {
             int medianPoint = (previousPoint + nextPoint) / 2;
-            if (DoubleComparator.lessThan(arrivalTimeInCodomain, points.get(medianPoint)[1])) {
+            if (DoubleComparator.lessThan(arrivalTime, points.get(medianPoint)[1])) {
                 nextPoint = medianPoint;
             } else {
                 previousPoint = medianPoint;
@@ -151,13 +126,10 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
 
         // Perform a linear interpolation between previousPoint and nextPoint
         assert DoubleComparator.greaterThan(points.get(nextPoint)[1], points.get(previousPoint)[1]);
-        double departureTime = points.get(previousPoint)[0] +
-                (arrivalTimeInCodomain - points.get(previousPoint)[1]) *
+        double departureTime = points.get(previousPoint)[0] + (arrivalTime - points.get(previousPoint)[1]) *
                 (points.get(nextPoint)[0] - points.get(previousPoint)[0]) /
                         (points.get(nextPoint)[1] - points.get(previousPoint)[1]);
-        departureTime += arrivalTime - arrivalTimeInCodomain;
         assert DoubleComparator.lessOrEqual(departureTime, arrivalTime);
-
         return departureTime;
     }
 

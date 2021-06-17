@@ -5,6 +5,9 @@ public class RouteEnd extends RouteStop {
         this.endOfTheDay = endOfTheDay;
     }
 
+    public double getOvertime() {
+        return Math.max(0, arrivalTime - endOfTheDay);
+    }
     @Override
     public int getNode() {
         return 0;
@@ -17,7 +20,7 @@ public class RouteEnd extends RouteStop {
 
     @Override
     public double getTimeWindowUpperBound() {
-        return endOfTheDay;
+        return Double.MAX_VALUE;
     }
 
     @Override
