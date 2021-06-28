@@ -79,7 +79,7 @@ public class Route {
 
     public int getNbUnsealedStops() {
         // The route end does not count
-        return routeStops.size() - nbSealedStops - 1;
+        return Math.max(routeStops.size() - nbSealedStops - 1, 0);
     }
 
     public Route getRouteAfterInsertion(Request request) {

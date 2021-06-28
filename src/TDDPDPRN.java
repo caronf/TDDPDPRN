@@ -33,9 +33,11 @@ public class TDDPDPRN {
 
         long startTime = System.nanoTime();
 
-        TabuSearch tabuSearch = new TabuSearch(Integer.MAX_VALUE);
-        DynamicProblemSolver dynamicProblemSolver = new DynamicProblemSolver(10,
-                3.0 / 8.0, 1.0 / 2.0, 1.0, 1.0, 1000);
+        double msMultiplier = 500;
+        TabuSearch tabuSearch = new TabuSearch(10, 3.0 / 8.0,
+                1.0 / 2.0, Integer.MAX_VALUE, msMultiplier);
+        DynamicProblemSolver dynamicProblemSolver = new DynamicProblemSolver(
+                5.0, 10.0, msMultiplier);
 
         for (int nbClientsIndex = 0; nbClientsIndex < arrayNbClients.length; ++nbClientsIndex) {
             int nbInstancesForNbClients = 0;

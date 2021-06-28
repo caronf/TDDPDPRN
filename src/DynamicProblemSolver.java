@@ -1,20 +1,13 @@
 import java.util.*;
 
 public class DynamicProblemSolver {
-    private final double iterationsMultiplier;
-    private final double tabuTenureMultiplier;
-    private final double randomMovesMultiplier;
     private final double latenessWeight;
     private final double overtimeWeight;
 
     // Multiply the time values by this multiplier to obtain milliseconds
     private final double msMultiplier;
 
-    public DynamicProblemSolver(double iterationsMultiplier, double tabuTenureMultiplier, double randomMovesMultiplier,
-                                double latenessWeight, double overtimeWeight, double msMultiplier) {
-        this.iterationsMultiplier = iterationsMultiplier;
-        this.tabuTenureMultiplier = tabuTenureMultiplier;
-        this.randomMovesMultiplier = randomMovesMultiplier;
+    public DynamicProblemSolver(double latenessWeight, double overtimeWeight, double msMultiplier) {
         this.latenessWeight = latenessWeight;
         this.overtimeWeight = overtimeWeight;
         this.msMultiplier = msMultiplier;
@@ -31,15 +24,16 @@ public class DynamicProblemSolver {
                 inputData.endOfTheDay, latenessWeight, overtimeWeight,
                 inputData.vehicleCapacity, inputData.returnTime);
         double currentTime = 0.0;
-        ArrayList<Request> requestsToInsert = new ArrayList<>();
         ArrayList<Request> requestsInserted = new ArrayList<>(inputData.requests.size());
 
         while (currentTime < Double.MAX_VALUE) {
             double nextReleaseTime = Double.MAX_VALUE;
+            ArrayList<Request> requestsToInsert = new ArrayList<>();
             for (Request request : inputData.requests) {
-                if (request.releaseTime == currentTime) {
+                if (DoubleComparator.equal(request.releaseTime, currentTime)) {
                     requestsToInsert.add(request);
-                } else if (request.releaseTime > currentTime && request.releaseTime <= nextReleaseTime) {
+                } else if (DoubleComparator.greaterThan(request.releaseTime, currentTime) &&
+                        DoubleComparator.lessThan(request.releaseTime, nextReleaseTime)) {
                     nextReleaseTime = request.releaseTime;
                 }
             }
@@ -47,45 +41,21 @@ public class DynamicProblemSolver {
             solution.setCurrentTime(currentTime);
             solution.insertRequestsBestFirst(requestsToInsert);
             requestsInserted.addAll(requestsToInsert);
-            requestsToInsert.clear();
 
             // Might seal newly added stops
             solution.setCurrentTime(currentTime);
 
-            int nbUnsealedStops = solution.getNbUnsealedStops();
-            tabuSearch.setNbIterationsPerPhase((int) (nbUnsealedStops * iterationsMultiplier));
-            tabuSearch.setTabuTenure((int) (nbUnsealedStops * tabuTenureMultiplier));
-            tabuSearch.setNbRandomMoves((int) (nbUnsealedStops * randomMovesMultiplier));
-
-            double nextDepartureTime = solution.getNextDepartureTime();
-            while (DoubleComparator.lessThan(nextDepartureTime, nextReleaseTime) && nbUnsealedStops > 0) {
-                calendar.setTime(startTime);
-                calendar.add(Calendar.MILLISECOND, (int) (nextDepartureTime * msMultiplier));
-
-                // If the calendar time is passed, the task will be scheduled as soon as possible
-                timer.schedule(new InteruptSearchTask(tabuSearch), calendar.getTime());
-                solution = tabuSearch.Apply(solution, requestsInserted, random);
-                tabuSearch.resetInterruption();
-
-                solution.setCurrentTime(nextDepartureTime);
-
-                nbUnsealedStops = solution.getNbUnsealedStops();
-                tabuSearch.setNbIterationsPerPhase((int) (nbUnsealedStops * iterationsMultiplier));
-                tabuSearch.setTabuTenure((int) (nbUnsealedStops * tabuTenureMultiplier));
-                tabuSearch.setNbRandomMoves((int) (nbUnsealedStops * randomMovesMultiplier));
-
-                nextDepartureTime = solution.getNextDepartureTime();
-            }
-
-            if (nextReleaseTime < Double.MAX_VALUE && nbUnsealedStops > 0) {
+            if (nextReleaseTime < Double.MAX_VALUE) {
                 calendar.setTime(startTime);
                 calendar.add(Calendar.MILLISECOND, (int) (nextReleaseTime * msMultiplier));
 
                 // If the calendar time is passed, the task will be scheduled as soon as possible
                 timer.schedule(new InteruptSearchTask(tabuSearch), calendar.getTime());
-                solution = tabuSearch.Apply(solution, requestsInserted, random);
-                tabuSearch.resetInterruption();
             }
+
+            solution = tabuSearch.Apply(solution, requestsInserted, random, startTime.getTime());
+            timer.purge();
+            tabuSearch.resetInterruption();
 
             currentTime = nextReleaseTime;
         }
