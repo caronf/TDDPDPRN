@@ -146,7 +146,7 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
 //        }
     }
 
-    public static ArrivalTimeFunction[][] getDominantShortestPaths(InputData inputData) {
+    public static ArrivalTimeFunction[][] getDominantShortestPaths(InputData inputData, boolean useAverageTravelTimes) {
         ArrivalTimeFunction[][] dominantShortestPaths = new ArrivalTimeFunction[inputData.nbNodes][inputData.nbNodes];
 
         for (int departureNode = 0; departureNode < inputData.nbNodes; ++departureNode) {
@@ -165,7 +165,14 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
             int[] pathIndices = new int[inputData.nbNodes];
             HashSet<Integer> nodesToVisit = new HashSet<>(inputData.nbNodes);
 
-            for (double departureTime : inputData.proposedDepartTime) {
+            double[] departureTimes;
+            if (useAverageTravelTimes) {
+                departureTimes = new double[] {0.0};
+            } else {
+                departureTimes = inputData.proposedDepartTime;
+            }
+
+            for (double departureTime : departureTimes) {
                 // Calculate the best path from departureNode to every other node
                 // when leaving at departureTime using Dijkstra's algorithm
                 for (int i = 0; i < inputData.nbNodes; i++) {
@@ -211,7 +218,14 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
                         for (HashMap.Entry<Integer, ArrivalTimeFunction> entry :
                                 inputData.arcArrivalTimeFunctions.get(nextNode).entrySet()) {
                             if (nodesToVisit.contains(entry.getKey())) {
-                                double arrivalTime = entry.getValue().getArrivalTime(arrivalTimes[nextNode]);
+                                double arrivalTime;
+                                if (useAverageTravelTimes) {
+                                    arrivalTime = arrivalTimes[nextNode] +
+                                            inputData.averageTravelTimes.get(nextNode).get(entry.getKey());
+                                } else {
+                                    arrivalTime = entry.getValue().getArrivalTime(arrivalTimes[nextNode]);
+                                }
+
                                 if (DoubleComparator.lessThan(arrivalTime, arrivalTimes[entry.getKey()])) {
                                     arrivalTimes[entry.getKey()] = arrivalTime;
                                     previousNodes[entry.getKey()] = nextNode;

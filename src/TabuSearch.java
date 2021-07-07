@@ -13,6 +13,7 @@ public class TabuSearch {
     private final double tabuTenureMultiplier;
     private final double randomMovesMultiplier;
     private final int nbDiversificationIterations;
+    private final boolean testReinsertion;
 
     // Multiply the time values by this multiplier to obtain milliseconds
     private final double msMultiplier;
@@ -23,7 +24,7 @@ public class TabuSearch {
 //    private final double[] currentSolutionPercentages;
 
     public TabuSearch(double iterationsMultiplier, double tabuTenureMultiplier, double randomMovesMultiplier,
-                      int nbDiversificationIterations, double msMultiplier) {
+                      int nbDiversificationIterations, boolean testReinsertion, double msMultiplier) {
         searchIterations = 0;
         searchCount = 0;
         searchTime = 0;
@@ -32,6 +33,7 @@ public class TabuSearch {
         this.tabuTenureMultiplier = tabuTenureMultiplier;
         this.randomMovesMultiplier = randomMovesMultiplier;
         this.nbDiversificationIterations = nbDiversificationIterations;
+        this.testReinsertion = testReinsertion;
         this.msMultiplier = msMultiplier;
 
         isInterrupted = new AtomicBoolean(false);
@@ -125,7 +127,14 @@ public class TabuSearch {
 
                     if (nbRemoved == 0) {
                         requestIndicesToRemove.add(requestIndex);
-                    } else if (tabuCounters[requestIndex] == 0) {
+                        continue;
+                    }
+
+                    if (testReinsertion) {
+                        temporarySolution.insertRequest(requests.get(requestIndex));
+                    }
+
+                    if (tabuCounters[requestIndex] == 0) {
                         if (bestTemporarySolution == null ||
                                 DoubleComparator.lessThan(temporarySolution.getCost(),
                                         bestTemporarySolution.getCost())) {
@@ -149,11 +158,15 @@ public class TabuSearch {
                 ++searchIterations;
 
                 if (bestTemporarySolution != null) {
-                    bestTemporarySolution.insertRequest(requests.get(bestRequestIndex));
+                    if (!testReinsertion) {
+                        bestTemporarySolution.insertRequest(requests.get(bestRequestIndex));
+                    }
+
                     currentSolution = bestTemporarySolution;
                     if (DoubleComparator.lessThan(bestTemporarySolution.getCost(), bestTemporarySolution.getCost())) {
                         nbIterations = 0;
                         bestSolution = bestTemporarySolution;
+                        nextVehicleDeparture = bestSolution.getNextDepartureTime();
                     }
                 } else if (bestTabuTemporarySolution == null) {
                     searchTime += (System.nanoTime() - phaseStartTime) / 1000000000.0;
@@ -162,11 +175,16 @@ public class TabuSearch {
 
                 if (bestTabuTemporarySolution != null) {
                     assert bestTemporarySolution != null;
-                    bestTabuTemporarySolution.insertRequest(requests.get(bestTabuRequestIndex));
+
+                    if (!testReinsertion) {
+                        bestTabuTemporarySolution.insertRequest(requests.get(bestTabuRequestIndex));
+                    }
+
                     if (DoubleComparator.lessThan(bestTabuTemporarySolution.getCost(), bestSolution.getCost())) {
                         nbIterations = 0;
                         currentSolution = bestTabuTemporarySolution;
                         bestSolution = bestTabuTemporarySolution;
+                        nextVehicleDeparture = bestSolution.getNextDepartureTime();
                         bestRequestIndex = bestTabuRequestIndex;
                     }
                 }
@@ -217,6 +235,7 @@ public class TabuSearch {
 
                     if (DoubleComparator.lessThan(currentSolution.getCost(), bestSolution.getCost())) {
                         bestSolution = new Solution(currentSolution);
+                        nextVehicleDeparture = bestSolution.getNextDepartureTime();
                     }
                 }
 

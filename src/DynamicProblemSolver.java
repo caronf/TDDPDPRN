@@ -7,10 +7,16 @@ public class DynamicProblemSolver {
     // Multiply the time values by this multiplier to obtain milliseconds
     private final double msMultiplier;
 
-    public DynamicProblemSolver(double latenessWeight, double overtimeWeight, double msMultiplier) {
+    private boolean useAverageTravelTime;
+    private boolean useTabuSearch;
+
+    public DynamicProblemSolver(double latenessWeight, double overtimeWeight, double msMultiplier,
+                                boolean useAverageTravelTime, boolean useTabuSearch) {
         this.latenessWeight = latenessWeight;
         this.overtimeWeight = overtimeWeight;
         this.msMultiplier = msMultiplier;
+        this.useAverageTravelTime = useAverageTravelTime;
+        this.useTabuSearch = useTabuSearch;
     }
 
     public Solution apply(InputData inputData, Random random, TabuSearch tabuSearch) {
@@ -19,7 +25,7 @@ public class DynamicProblemSolver {
         Timer timer = new Timer();
 
         ArrivalTimeFunction[][] arrivalTimeFunctions =
-                DominantShortestPath.getDominantShortestPaths(inputData);
+                DominantShortestPath.getDominantShortestPaths(inputData, useAverageTravelTime);
         Solution solution = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
                 inputData.endOfTheDay, latenessWeight, overtimeWeight,
                 inputData.vehicleCapacity, inputData.returnTime);
@@ -45,17 +51,19 @@ public class DynamicProblemSolver {
             // Might seal newly added stops
             solution.setCurrentTime(currentTime);
 
-            if (nextReleaseTime < Double.MAX_VALUE) {
-                calendar.setTime(startTime);
-                calendar.add(Calendar.MILLISECOND, (int) (nextReleaseTime * msMultiplier));
+            if (useTabuSearch) {
+                if (nextReleaseTime < Double.MAX_VALUE) {
+                    calendar.setTime(startTime);
+                    calendar.add(Calendar.MILLISECOND, (int) (nextReleaseTime * msMultiplier));
 
-                // If the calendar time is passed, the task will be scheduled as soon as possible
-                timer.schedule(new InteruptSearchTask(tabuSearch), calendar.getTime());
+                    // If the calendar time is passed, the task will be scheduled as soon as possible
+                    timer.schedule(new InteruptSearchTask(tabuSearch), calendar.getTime());
+                }
+
+                solution = tabuSearch.Apply(solution, requestsInserted, random, startTime.getTime());
+                timer.purge();
+                tabuSearch.resetInterruption();
             }
-
-            solution = tabuSearch.Apply(solution, requestsInserted, random, startTime.getTime());
-            timer.purge();
-            tabuSearch.resetInterruption();
 
             currentTime = nextReleaseTime;
         }

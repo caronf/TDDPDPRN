@@ -35,9 +35,9 @@ public class TDDPDPRN {
 
         double msMultiplier = 500;
         TabuSearch tabuSearch = new TabuSearch(10, 3.0 / 8.0,
-                1.0 / 2.0, Integer.MAX_VALUE, msMultiplier);
+                1.0 / 2.0, Integer.MAX_VALUE, true, msMultiplier);
         DynamicProblemSolver dynamicProblemSolver = new DynamicProblemSolver(
-                5.0, 10.0, msMultiplier);
+                5.0, 10.0, msMultiplier, true, true);
 
         for (int nbClientsIndex = 0; nbClientsIndex < arrayNbClients.length; ++nbClientsIndex) {
             int nbInstancesForNbClients = 0;
