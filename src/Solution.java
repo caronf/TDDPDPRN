@@ -8,6 +8,7 @@ public class Solution {
     private double travelTime;
     private double lateness;
     private double cost;
+    private boolean retrying;
 
     // routeIndexForNextInsertion is used when the last request removed had
     // a sealed pickup and indicates in which route the delivery must be reinserted
@@ -24,6 +25,8 @@ public class Solution {
         lateness = routes.get(0).getLateness();
         cost = routes.get(0).getCost();
 
+        retrying = false;
+
         routeIndexForNextInsertion = -1;
     }
 
@@ -37,6 +40,8 @@ public class Solution {
         travelTime = otherSolution.travelTime;
         lateness = otherSolution.lateness;
         cost = otherSolution.cost;
+
+        retrying = otherSolution.retrying;
 
         routeIndexForNextInsertion = otherSolution.routeIndexForNextInsertion;
     }
@@ -92,11 +97,11 @@ public class Solution {
         int routeIndex = -1;
         if (routeIndexForNextInsertion >= 0) {
             routeIndex = routeIndexForNextInsertion;
-            do {
+            //do {
                 bestRoute = routes.get(routeIndex).getRouteAfterInsertingDelivery(request);
                 // If the insertion fails the first time,
                 // the delivery will be inserted at its previous location the second time
-            } while (bestRoute == null);
+            //} while (bestRoute == null);
             routeIndexForNextInsertion = -1;
         } else {
             for (int i = 0; i < routes.size(); ++i) {
@@ -114,7 +119,14 @@ public class Solution {
             }
         }
 
-        assert bestRoute != null;
+        if (bestRoute == null) {
+            assert !retrying;
+            retrying = true;
+            insertRequest(request);
+            retrying = false;
+            return;
+        }
+
         if (routeIndex == routes.size() - 1 && routes.size() < maxNbRoutes) {
             routes.add(routeIndex, bestRoute);
         }
@@ -270,5 +282,9 @@ public class Solution {
         }
 
         return nextDepartureTime;
+    }
+
+    public int getNbRoutes() {
+        return routes.size();
     }
 }

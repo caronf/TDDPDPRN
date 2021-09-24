@@ -24,8 +24,15 @@ public class DynamicProblemSolver {
         Calendar calendar = Calendar.getInstance();
         Timer timer = new Timer();
 
+        double[] departureTimes;
+        if (useAverageTravelTime) {
+            departureTimes = new double[] {0.0};
+        } else {
+            departureTimes = inputData.proposedDepartTime;
+        }
+
         ArrivalTimeFunction[][] arrivalTimeFunctions =
-                DominantShortestPath.getDominantShortestPaths(inputData, useAverageTravelTime);
+                DominantShortestPath.getDominantShortestPaths(inputData, useAverageTravelTime, departureTimes);
         Solution solution = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
                 inputData.endOfTheDay, latenessWeight, overtimeWeight,
                 inputData.vehicleCapacity, inputData.returnTime);

@@ -6,15 +6,16 @@ public class TDDPDPRN {
     public static void main(String[] args) {
 //        InputData data;
 //        try {
-//            data = new InputData(true);
+//            data = new InputData(false);
 //        } catch (FileNotFoundException e) {
 //            return;
 //        }
+//        System.out.println(data.averageSpeedDeviation);
 //
 //        DominantShortestPath.getDominantShortestPaths(data);
 
-        final int[] arrayNbNodes = new int[] {50, 100, 200};
-        final int[] arrayNbClients = new int[] {16, 25, 33, 50, 66, 75, 100, 133};
+        final int[] arrayNbNodes = new int[] {50, 100, 200 /*500*/};
+        final int[] arrayNbClients = new int[] {16, 25, 33, 50, 66, 75, 100, 133 /*200*/};
         final double[] arrayCorr = new double[] {0.02, 0.5, 0.98};
         final int[] indices = new int[] {1, 2, 3, 4, 5};
         final String[] timeWindowTypes = new String[] {"NTW", "WTW"};
@@ -23,6 +24,10 @@ public class TDDPDPRN {
         double[] preprocessingTimes = new double[arrayNbNodes.length];
         double initialSolutionTimeAverage = 0.0;
         double[] tabuSearchTimes = new double[arrayNbClients.length];
+        double[] insertionTimes = new double[arrayNbClients.length];
+        double[] removalTimes = new double[arrayNbClients.length];
+        double[] nbInsertions = new double[arrayNbClients.length];
+        double[] nbRemovals = new double[arrayNbClients.length];
         int[] averageSearchIterations = new int[arrayNbClients.length];
         double initialSolutionCost = 0.0;
         double afterTabuCost = 0.0;
@@ -35,9 +40,9 @@ public class TDDPDPRN {
 
         double msMultiplier = 500;
         TabuSearch tabuSearch = new TabuSearch(10, 3.0 / 8.0,
-                1.0 / 2.0, Integer.MAX_VALUE, true, msMultiplier);
+                1.0 / 2.0, Integer.MAX_VALUE, false, msMultiplier);
         DynamicProblemSolver dynamicProblemSolver = new DynamicProblemSolver(
-                5.0, 10.0, msMultiplier, true, true);
+                5.0, 10.0, msMultiplier, false, false);
 
         for (int nbClientsIndex = 0; nbClientsIndex < arrayNbClients.length; ++nbClientsIndex) {
             int nbInstancesForNbClients = 0;
@@ -53,7 +58,7 @@ public class TDDPDPRN {
                             InputData inputData;
                             try {
                                 inputData = new InputData(arrayNbNodes[nbNodeIndex], arrayNbClients[nbClientsIndex],
-                                        corr, index, timeWindowType, instanceRandom, 0.5);
+                                        corr, index, timeWindowType, instanceRandom, 0.5, 0.2);
                             } catch (FileNotFoundException e) {
                                 // Not all parameter combinations exist
                                 continue;
@@ -66,6 +71,36 @@ public class TDDPDPRN {
                             for (Request request : inputData.requests) {
                                 assert solution.getNbStopsForRequest(request) == 2;
                             }
+
+//                            ArrivalTimeFunction[][] atf1 =
+//                                    DominantShortestPath.getDominantShortestPaths(inputData, false,
+//                                            new double[] {inputData.proposedDepartTime[0]});
+//                            ArrivalTimeFunction[][] atf2 =
+//                                    DominantShortestPath.getDominantShortestPaths(inputData, false,
+//                                            inputData.proposedDepartTime);
+//
+//                            double travelTimeRatio = 0.0;
+//                            int nbValues = 0;
+//                            for (int i = 0; i < inputData.nbNodes; ++i) {
+//                                for (int j = 0; j < inputData.nbNodes; ++j) {
+//                                    if (i != j) {
+//                                        if (((DominantShortestPath) atf2[i][j]).paths.size() > 1) {
+//                                            for (double departureTime = 0.0;
+//                                                 departureTime <= inputData.endOfTheDay;
+//                                                 ++departureTime) {
+//                                                double travelTime1 =
+//                                                        atf1[i][j].getArrivalTime(departureTime) - departureTime;
+//                                                double travelTime2 =
+//                                                        atf2[i][j].getArrivalTime(departureTime) - departureTime;
+//                                                //assert DoubleComparator.greaterOrEqual(travelTime1, travelTime2);
+//                                                travelTimeRatio += travelTime1 / travelTime2;
+//                                                ++nbValues;
+//                                            }
+//                                        }
+//                                    }
+//                                }
+//                            }
+//                            System.out.println(travelTimeRatio / nbValues - 1.0);
 
 //                            time = System.nanoTime();
 //                            ArrivalTimeFunction[][] arrivalTimeFunctions =
@@ -116,6 +151,10 @@ public class TDDPDPRN {
             }
 
             tabuSearchTimes[nbClientsIndex] = tabuSearch.getTimePerIteration();
+            insertionTimes[nbClientsIndex] = tabuSearch.getTimePerInsertion();
+            removalTimes[nbClientsIndex] = tabuSearch.getTimePerRemoval();
+            nbInsertions[nbClientsIndex] = tabuSearch.getNbInsertionsPerIteration();
+            nbRemovals[nbClientsIndex] = tabuSearch.getNbRemovalsPerIteration();
             averageSearchIterations[nbClientsIndex] = tabuSearch.getAverageIterationsPerSearch();
             tabuSearch.resetSearchIterations();
 
@@ -146,8 +185,12 @@ public class TDDPDPRN {
 //        System.out.println(String.format("afterTabuCost = %f", afterTabuCost));
 //        System.out.println(String.format("totalImprovement = %f", totalImprovement));
 //        System.out.println(String.format("maxTotalImprovement = %f", maxTotalImprovement));
-        System.out.println(String.format("totalTime = %fs", (System.nanoTime() - startTime) / 1000000000.0));
+        System.out.println(String.format("totalTime (s) = %f", (System.nanoTime() - startTime) / 1000000000.0));
         System.out.println(String.format("averageSearchIterations = %s", Arrays.toString(averageSearchIterations)));
         System.out.println(String.format("tabuSearchTimes = %s", Arrays.toString(tabuSearchTimes)));
+        System.out.println(String.format("insertionTimes = %s", Arrays.toString(insertionTimes)));
+        System.out.println(String.format("removalTimes = %s", Arrays.toString(removalTimes)));
+        System.out.println(String.format("nbInsertions = %s", Arrays.toString(nbInsertions)));
+        System.out.println(String.format("nbRemovals = %s", Arrays.toString(nbRemovals)));
     }
 }

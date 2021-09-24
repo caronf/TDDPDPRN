@@ -146,7 +146,8 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
 //        }
     }
 
-    public static ArrivalTimeFunction[][] getDominantShortestPaths(InputData inputData, boolean useAverageTravelTimes) {
+    public static ArrivalTimeFunction[][] getDominantShortestPaths(InputData inputData, boolean useAverageTravelTimes,
+                                                                   double[] departureTimes) {
         ArrivalTimeFunction[][] dominantShortestPaths = new ArrivalTimeFunction[inputData.nbNodes][inputData.nbNodes];
 
         for (int departureNode = 0; departureNode < inputData.nbNodes; ++departureNode) {
@@ -164,13 +165,6 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
             int[] previousNodes = new int[inputData.nbNodes];
             int[] pathIndices = new int[inputData.nbNodes];
             HashSet<Integer> nodesToVisit = new HashSet<>(inputData.nbNodes);
-
-            double[] departureTimes;
-            if (useAverageTravelTimes) {
-                departureTimes = new double[] {0.0};
-            } else {
-                departureTimes = inputData.proposedDepartTime;
-            }
 
             for (double departureTime : departureTimes) {
                 // Calculate the best path from departureNode to every other node

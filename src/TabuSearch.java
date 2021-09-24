@@ -8,6 +8,10 @@ public class TabuSearch {
     private int searchIterations;
     private int searchCount;
     private double searchTime;
+    private int nbInsertions;
+    private double insertionTime;
+    private int nbRemovals;
+    private double removalTime;
 
     private final double iterationsMultiplier;
     private final double tabuTenureMultiplier;
@@ -25,9 +29,7 @@ public class TabuSearch {
 
     public TabuSearch(double iterationsMultiplier, double tabuTenureMultiplier, double randomMovesMultiplier,
                       int nbDiversificationIterations, boolean testReinsertion, double msMultiplier) {
-        searchIterations = 0;
-        searchCount = 0;
-        searchTime = 0;
+        resetSearchIterations();
 
         this.iterationsMultiplier = iterationsMultiplier;
         this.tabuTenureMultiplier = tabuTenureMultiplier;
@@ -49,10 +51,30 @@ public class TabuSearch {
         return searchIterations == 0 ? 0 : searchTime / searchIterations;
     }
 
+    public double getTimePerInsertion() {
+        return nbInsertions == 0 ? 0 : insertionTime / nbInsertions;
+    }
+
+    public double getTimePerRemoval() {
+        return nbRemovals == 0 ? 0 : removalTime / nbRemovals;
+    }
+
+    public double getNbInsertionsPerIteration() {
+        return (double) nbInsertions / searchIterations;
+    }
+
+    public double getNbRemovalsPerIteration() {
+        return (double) nbRemovals / searchIterations;
+    }
+
     public void resetSearchIterations() {
         searchIterations = 0;
         searchCount = 0;
         searchTime = 0.0;
+        nbInsertions = 0;
+        insertionTime = 0.0;
+        nbRemovals = 0;
+        removalTime = 0.0;
     }
 
     public void interrupt() {
@@ -122,8 +144,11 @@ public class TabuSearch {
 
                 ArrayList<Integer> requestIndicesToRemove = new ArrayList<>();
                 for (int requestIndex : validRequestIndices) {
+                    long removalStartTime = System.nanoTime();
                     Solution temporarySolution = new Solution(currentSolution);
                     int nbRemoved = temporarySolution.removeRequest(requests.get(requestIndex));
+                    removalTime += (System.nanoTime() - removalStartTime) / 1000000000.0;
+                    ++nbRemovals;
 
                     if (nbRemoved == 0) {
                         requestIndicesToRemove.add(requestIndex);
@@ -131,7 +156,10 @@ public class TabuSearch {
                     }
 
                     if (testReinsertion) {
+                        long insertionStartTime = System.nanoTime();
                         temporarySolution.insertRequest(requests.get(requestIndex));
+                        insertionTime += (System.nanoTime() - insertionStartTime) / 1000000000.0;
+                        ++nbInsertions;
                     }
 
                     if (tabuCounters[requestIndex] == 0) {
@@ -159,7 +187,10 @@ public class TabuSearch {
 
                 if (bestTemporarySolution != null) {
                     if (!testReinsertion) {
+                        long insertionStartTime = System.nanoTime();
                         bestTemporarySolution.insertRequest(requests.get(bestRequestIndex));
+                        insertionTime += (System.nanoTime() - insertionStartTime) / 1000000000.0;
+                        ++nbInsertions;
                     }
 
                     currentSolution = bestTemporarySolution;
@@ -177,7 +208,10 @@ public class TabuSearch {
                     assert bestTemporarySolution != null;
 
                     if (!testReinsertion) {
+                        long insertionStartTime = System.nanoTime();
                         bestTabuTemporarySolution.insertRequest(requests.get(bestTabuRequestIndex));
+                        insertionTime += (System.nanoTime() - insertionStartTime) / 1000000000.0;
+                        ++nbInsertions;
                     }
 
                     if (DoubleComparator.lessThan(bestTabuTemporarySolution.getCost(), bestSolution.getCost())) {
