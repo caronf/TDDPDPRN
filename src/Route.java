@@ -292,6 +292,7 @@ public class Route {
     }
 
     public void setCurrentTime(double currentTime) {
+        assert currentTime >= this.currentTime;
         this.currentTime = currentTime;
         while (nbSealedStops < routeStops.size() &&
                 (DoubleComparator.lessOrEqual(routeStops.get(nbSealedStops - 1).getDepartureTime(), currentTime))) {

@@ -8,7 +8,6 @@ public class Solution {
     private double travelTime;
     private double lateness;
     private double cost;
-    private boolean retrying;
 
     // routeIndexForNextInsertion is used when the last request removed had
     // a sealed pickup and indicates in which route the delivery must be reinserted
@@ -25,8 +24,6 @@ public class Solution {
         lateness = routes.get(0).getLateness();
         cost = routes.get(0).getCost();
 
-        retrying = false;
-
         routeIndexForNextInsertion = -1;
     }
 
@@ -40,8 +37,6 @@ public class Solution {
         travelTime = otherSolution.travelTime;
         lateness = otherSolution.lateness;
         cost = otherSolution.cost;
-
-        retrying = otherSolution.retrying;
 
         routeIndexForNextInsertion = otherSolution.routeIndexForNextInsertion;
     }
@@ -97,34 +92,36 @@ public class Solution {
         int routeIndex = -1;
         if (routeIndexForNextInsertion >= 0) {
             routeIndex = routeIndexForNextInsertion;
-            //do {
+            int nbTries = 0;
+            do {
+                assert nbTries <= 1;
                 bestRoute = routes.get(routeIndex).getRouteAfterInsertingDelivery(request);
-                // If the insertion fails the first time,
-                // the delivery will be inserted at its previous location the second time
-            //} while (bestRoute == null);
+                ++nbTries;
+                // If the insertion fails the first time, the delivery will
+                // be inserted at its previous location the second time
+            } while (bestRoute == null);
             routeIndexForNextInsertion = -1;
         } else {
-            for (int i = 0; i < routes.size(); ++i) {
-                if (routes.get(i).isInsertionPossible()) {
-                    Route newRoute = routes.get(i).getRouteAfterInsertion(request);
-                    if (newRoute != null) {
-                        double costIncrease = newRoute.getCost() - routes.get(i).getCost();
-                        if (costIncrease < bestCostIncrease) {
-                            bestCostIncrease = costIncrease;
-                            bestRoute = newRoute;
-                            routeIndex = i;
+            int nbTries = 0;
+            do {
+                assert nbTries <= 1;
+                for (int i = 0; i < routes.size(); ++i) {
+                    if (routes.get(i).isInsertionPossible()) {
+                        Route newRoute = routes.get(i).getRouteAfterInsertion(request);
+                        if (newRoute != null) {
+                            double costIncrease = newRoute.getCost() - routes.get(i).getCost();
+                            if (costIncrease < bestCostIncrease) {
+                                bestCostIncrease = costIncrease;
+                                bestRoute = newRoute;
+                                routeIndex = i;
+                            }
                         }
                     }
                 }
-            }
-        }
-
-        if (bestRoute == null) {
-            assert !retrying;
-            retrying = true;
-            insertRequest(request);
-            retrying = false;
-            return;
+                ++nbTries;
+                // If the insertion fails the first time, the service points
+                // will be inserted at its previous location the second time
+            } while (bestRoute == null);
         }
 
         if (routeIndex == routes.size() - 1 && routes.size() < maxNbRoutes) {
@@ -179,14 +176,15 @@ public class Solution {
         }
 
         while (!requestsToInsert.isEmpty()) {
-            int bestRequestIndex = 0;
-            int bestRouteIndex = 0;
+            int bestRequestIndex = -1;
+            int bestRouteIndex = -1;
 
             // Find the smallest increase in cost
             for (int i = 0; i < requestsToInsert.size(); ++i) {
                 for (int j = 0; j < routes.size(); ++j) {
-                    if (costIncreaseMatrix.get(i).get(j) <
-                            costIncreaseMatrix.get(bestRequestIndex).get(bestRouteIndex)) {
+                    if (costIncreaseMatrix.get(i).get(j) < Double.MAX_VALUE &&
+                            (bestRequestIndex == -1 || costIncreaseMatrix.get(i).get(j) <
+                                    costIncreaseMatrix.get(bestRequestIndex).get(bestRouteIndex))) {
                         bestRequestIndex = i;
                         bestRouteIndex = j;
                     }
@@ -194,6 +192,7 @@ public class Solution {
             }
 
             // Perform the insertion with minimum cost increase
+            assert bestRequestIndex != -1;
             assert routes.get(bestRouteIndex) != null;
             travelTime += newRoutesMatrix.get(bestRequestIndex).get(bestRouteIndex).getTravelTime() -
                     routes.get(bestRouteIndex).getTravelTime();

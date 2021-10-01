@@ -19,16 +19,13 @@ public class TabuSearch {
     private final int nbDiversificationIterations;
     private final boolean testReinsertion;
 
-    // Multiply the time values by this multiplier to obtain milliseconds
-    private final double msMultiplier;
-
     private final AtomicBoolean isInterrupted;
 
 //    private final double[] bestSolutionPercentages;
 //    private final double[] currentSolutionPercentages;
 
     public TabuSearch(double iterationsMultiplier, double tabuTenureMultiplier, double randomMovesMultiplier,
-                      int nbDiversificationIterations, boolean testReinsertion, double msMultiplier) {
+                      int nbDiversificationIterations, boolean testReinsertion) {
         resetSearchIterations();
 
         this.iterationsMultiplier = iterationsMultiplier;
@@ -36,7 +33,6 @@ public class TabuSearch {
         this.randomMovesMultiplier = randomMovesMultiplier;
         this.nbDiversificationIterations = nbDiversificationIterations;
         this.testReinsertion = testReinsertion;
-        this.msMultiplier = msMultiplier;
 
         isInterrupted = new AtomicBoolean(false);
 //        bestSolutionPercentages = new double[stoppingCriteria * (nbDiversificationIterations + 1) / 10];
@@ -93,7 +89,7 @@ public class TabuSearch {
 //        return currentSolutionPercentages;
 //    }
 
-    public Solution Apply(Solution startingSolution, List<Request> requests, Random random, long startTime) {
+    public Solution Apply(Solution startingSolution, List<Request> requests, Random random, ProblemClock problemClock) {
         ++searchCount;
         Solution currentSolution = startingSolution;
         Solution bestSolution = startingSolution;
@@ -122,7 +118,7 @@ public class TabuSearch {
                     return bestSolution;
                 }
 
-                double currentTime = (System.currentTimeMillis() - startTime) / msMultiplier;
+                double currentTime = problemClock.getCurrentProblemTime();
                 if (DoubleComparator.greaterOrEqual(currentTime, nextVehicleDeparture)) {
                     bestSolution.setCurrentTime(currentTime);
                     nextVehicleDeparture = bestSolution.getNextDepartureTime();
@@ -247,7 +243,7 @@ public class TabuSearch {
                         return bestSolution;
                     }
 
-                    double currentTime = (System.currentTimeMillis() - startTime) / msMultiplier;
+                    double currentTime = problemClock.getCurrentProblemTime();
                     if (DoubleComparator.greaterOrEqual(currentTime, nextVehicleDeparture)) {
                         bestSolution.setCurrentTime(currentTime);
                         nextVehicleDeparture = bestSolution.getNextDepartureTime();

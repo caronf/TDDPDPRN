@@ -7,8 +7,8 @@ public class DynamicProblemSolver {
     // Multiply the time values by this multiplier to obtain milliseconds
     private final double msMultiplier;
 
-    private boolean useAverageTravelTime;
-    private boolean useTabuSearch;
+    private final boolean useAverageTravelTime;
+    private final boolean useTabuSearch;
 
     public DynamicProblemSolver(double latenessWeight, double overtimeWeight, double msMultiplier,
                                 boolean useAverageTravelTime, boolean useTabuSearch) {
@@ -20,8 +20,6 @@ public class DynamicProblemSolver {
     }
 
     public Solution apply(InputData inputData, Random random, TabuSearch tabuSearch) {
-        Date startTime = new Date();
-        Calendar calendar = Calendar.getInstance();
         Timer timer = new Timer();
 
         double[] departureTimes;
@@ -33,46 +31,54 @@ public class DynamicProblemSolver {
 
         ArrivalTimeFunction[][] arrivalTimeFunctions =
                 DominantShortestPath.getDominantShortestPaths(inputData, useAverageTravelTime, departureTimes);
+
+        ProblemClock problemClock = new ProblemClock(msMultiplier);
+
         Solution solution = new Solution(inputData.nbVehicles, arrivalTimeFunctions,
                 inputData.endOfTheDay, latenessWeight, overtimeWeight,
                 inputData.vehicleCapacity, inputData.returnTime);
-        double currentTime = 0.0;
         ArrayList<Request> requestsInserted = new ArrayList<>(inputData.requests.size());
 
-        while (currentTime < Double.MAX_VALUE) {
+        while (requestsInserted.size() < inputData.requests.size()) {
             double nextReleaseTime = Double.MAX_VALUE;
             ArrayList<Request> requestsToInsert = new ArrayList<>();
             for (Request request : inputData.requests) {
-                if (DoubleComparator.equal(request.releaseTime, currentTime)) {
-                    requestsToInsert.add(request);
-                } else if (DoubleComparator.greaterThan(request.releaseTime, currentTime) &&
-                        DoubleComparator.lessThan(request.releaseTime, nextReleaseTime)) {
-                    nextReleaseTime = request.releaseTime;
+                if (!requestsInserted.contains(request)) {
+                    if (DoubleComparator.lessOrEqual(request.releaseTime, problemClock.getCurrentProblemTime())) {
+                        requestsToInsert.add(request);
+                    } else {
+                        nextReleaseTime = Math.min(nextReleaseTime, request.releaseTime);
+                    }
                 }
             }
 
-            solution.setCurrentTime(currentTime);
+            solution.setCurrentTime(problemClock.getCurrentProblemTime());
             solution.insertRequestsBestFirst(requestsToInsert);
             requestsInserted.addAll(requestsToInsert);
 
             // Might seal newly added stops
-            solution.setCurrentTime(currentTime);
+            solution.setCurrentTime(problemClock.getCurrentProblemTime());
 
-            if (useTabuSearch) {
-                if (nextReleaseTime < Double.MAX_VALUE) {
-                    calendar.setTime(startTime);
-                    calendar.add(Calendar.MILLISECOND, (int) (nextReleaseTime * msMultiplier));
+            if (DoubleComparator.greaterThan(nextReleaseTime, problemClock.getCurrentProblemTime())) {
+                if (useTabuSearch) {
+                    if (nextReleaseTime < Double.MAX_VALUE) {
+                        timer.schedule(new InteruptSearchTask(tabuSearch),
+                                problemClock.convertProblemTimeToDate(nextReleaseTime));
+                    }
 
-                    // If the calendar time is passed, the task will be scheduled as soon as possible
-                    timer.schedule(new InteruptSearchTask(tabuSearch), calendar.getTime());
+                    solution = tabuSearch.Apply(solution, requestsInserted, random, problemClock);
+                    timer.purge();
+                    tabuSearch.resetInterruption();
+                } else if (nextReleaseTime < Double.MAX_VALUE) {
+                    try {
+                        Thread.sleep(Math.max(0, problemClock.convertProblemTimeToMs(
+                                nextReleaseTime - problemClock.getCurrentProblemTime())));
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                        Thread.currentThread().interrupt();
+                    }
                 }
-
-                solution = tabuSearch.Apply(solution, requestsInserted, random, startTime.getTime());
-                timer.purge();
-                tabuSearch.resetInterruption();
             }
-
-            currentTime = nextReleaseTime;
         }
 
         timer.cancel();
