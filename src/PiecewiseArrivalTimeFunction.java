@@ -2,7 +2,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 
 public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
-    public ArrayList<double[]> points;
+    // Break points between which the arrival time evolves linearly
+    protected final ArrayList<double[]> points;
 
     public PiecewiseArrivalTimeFunction() {
         points = new ArrayList<>();
@@ -75,6 +76,7 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         assert departureTime >= 0.0;
 
         if (DoubleComparator.greaterOrEqual(departureTime, points.get(points.size() - 1)[0])) {
+            // The function continues towards infinity with a slope of 1 after the last break point
             return points.get(points.size() - 1)[1] + departureTime - points.get(points.size() - 1)[0];
         }
 
@@ -108,6 +110,7 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         }
 
         if (DoubleComparator.greaterOrEqual(arrivalTime, points.get(points.size() - 1)[1])) {
+            // The function continues towards infinity with a slope of 1 after the last break point
             return points.get(points.size() - 1)[0] + arrivalTime - points.get(points.size() - 1)[1];
         }
 

@@ -69,13 +69,12 @@ public class DynamicProblemSolver {
                     solution = tabuSearch.Apply(solution, requestsInserted, random, problemClock);
                     timer.purge();
                     tabuSearch.resetInterruption();
-                } else if (nextReleaseTime < Double.MAX_VALUE) {
-                    try {
-                        Thread.sleep(Math.max(0, problemClock.convertProblemTimeToMs(
-                                nextReleaseTime - problemClock.getCurrentProblemTime())));
-                    } catch (InterruptedException e) {
-                        e.printStackTrace();
-                        Thread.currentThread().interrupt();
+                }
+
+                if (nextReleaseTime < Double.MAX_VALUE) {
+                    double timeToNextRelease = nextReleaseTime - problemClock.getCurrentProblemTime();
+                    if(timeToNextRelease > 0.0) {
+                        problemClock.skip(timeToNextRelease);
                     }
                 }
             }
