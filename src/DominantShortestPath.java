@@ -146,6 +146,16 @@ public class DominantShortestPath extends PiecewiseArrivalTimeFunction {
 //        }
     }
 
+    @Override
+    public int getSize() {
+        int pathsSize = 0;
+        for (ArrayList<Integer> path : paths) {
+            pathsSize += path.size() * Integer.BYTES;
+        }
+
+        return super.getSize() + bestPaths.size() * Integer.BYTES + pathsSize;
+    }
+
     public static ArrivalTimeFunction[][] getDominantShortestPaths(InputData inputData, boolean useAverageTravelTimes,
                                                                    double[] departureTimes) {
         ArrivalTimeFunction[][] dominantShortestPaths = new ArrivalTimeFunction[inputData.nbNodes][inputData.nbNodes];

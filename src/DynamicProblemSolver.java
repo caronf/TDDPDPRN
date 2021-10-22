@@ -26,7 +26,7 @@ public class DynamicProblemSolver {
         if (useAverageTravelTime) {
             departureTimes = new double[] {0.0};
         } else {
-            departureTimes = inputData.proposedDepartTime;
+            departureTimes = inputData.intervalTimes;
         }
 
         ArrivalTimeFunction[][] arrivalTimeFunctions =

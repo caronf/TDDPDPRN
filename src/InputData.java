@@ -3,13 +3,12 @@ import java.io.FileNotFoundException;
 import java.util.*;
 
 public class InputData {
-    //static final int depotIndex = 0;
     public final int nbNodes;
     public final ArrayList<Request> requests;
     public final HashMap<Integer, HashMap<Integer, ArrivalTimeFunction>> arcArrivalTimeFunctions;
     public final HashMap<Integer, HashMap<Integer, Double>> averageTravelTimes;
     public final double averageSpeedDeviation;
-    public final double[] proposedDepartTime;
+    public final double[] intervalTimes;
     public final double endOfTheDay;
     public final int nbVehicles;
     public final double vehicleCapacity;
@@ -174,12 +173,12 @@ public class InputData {
             int nbIntervals = Integer.parseInt(line[0]);
             int nbTypes = Integer.parseInt(line[1]);
             double[][] speedFactors = new double[nbTypes][nbIntervals];
-            proposedDepartTime = new double[nbIntervals + 1];
+            intervalTimes = new double[nbIntervals + 1];
 
             line = sc.nextLine().trim().split("\\s+");
 
             for (int i = 0; i < nbIntervals; ++i) {
-                proposedDepartTime[i + 1] = Double.parseDouble(line[i]) * endOfTheDay;
+                intervalTimes[i + 1] = Double.parseDouble(line[i]) * endOfTheDay;
             }
 
             for (int j = 0; j < nbTypes; ++j) {
@@ -199,13 +198,13 @@ public class InputData {
 
                 double averageSpeedFactor = 0.0;
                 for (int i = 0; i < nbIntervals; ++i) {
-                    averageSpeedFactor += speedFactors[typ][i] * (proposedDepartTime[i + 1] - proposedDepartTime[i]);
+                    averageSpeedFactor += speedFactors[typ][i] * (intervalTimes[i + 1] - intervalTimes[i]);
                 }
-                averageSpeedFactor /= (proposedDepartTime[nbIntervals] - proposedDepartTime[0]);
+                averageSpeedFactor /= (intervalTimes[nbIntervals] - intervalTimes[0]);
 
                 for (int i = 0; i < nbIntervals; ++i) {
                     speedDeviationSum += Math.abs(speedFactors[typ][i] - averageSpeedFactor) / averageSpeedFactor *
-                            (proposedDepartTime[i + 1] - proposedDepartTime[i]);
+                            (intervalTimes[i + 1] - intervalTimes[i]);
                 }
 
                 if (!arcArrivalTimeFunctions.containsKey(from)) {
@@ -215,35 +214,35 @@ public class InputData {
 
                 assert !arcArrivalTimeFunctions.get(from).containsKey(to);
                 arcArrivalTimeFunctions.get(from).put(to,
-                        new PiecewiseArrivalTimeFunction(proposedDepartTime, travelTimes[from][to], speedFactors[typ]));
+                        new PiecewiseArrivalTimeFunction(intervalTimes, travelTimes[from][to], speedFactors[typ]));
                 averageTravelTimes.get(from).put(to, averageSpeedFactor * travelTimes[from][to]);
 
                 ++nbArcs;
             }
             sc.close();
             averageSpeedDeviation =
-                    speedDeviationSum / (proposedDepartTime[nbIntervals] - proposedDepartTime[0]) / nbArcs;
+                    speedDeviationSum / (intervalTimes[nbIntervals] - intervalTimes[0]) / nbArcs;
         } else {
             double[][] speedFactors = new double[][] {
                     {1.5, 1.0, 1.67, 1.17, 1.33},
                     {1.17, 0.67, 1.33, 0.83, 1},
                     {1, 0.33, 0.67, 0.5, 0.83}
             };
-            proposedDepartTime = new double[] {0.0, 20.0, 30.0, 70.0, 80.0, 100.0};
+            intervalTimes = new double[] {0.0, 20.0, 30.0, 70.0, 80.0, 100.0};
 
             for (int from = 0; from < nbNodes; ++from) {
                 for (int to = 0; to < nbNodes; ++to) {
                     if (travelTimes[from][to] > 0.0) {
                         int typ = random.nextInt(speedFactors.length);
                         double averageSpeedFactor = 0.0;
-                        for (int i = 0; i < proposedDepartTime.length - 1; ++i) {
-                            averageSpeedFactor += speedFactors[typ][i] * (proposedDepartTime[i + 1] - proposedDepartTime[i]);
+                        for (int i = 0; i < intervalTimes.length - 1; ++i) {
+                            averageSpeedFactor += speedFactors[typ][i] * (intervalTimes[i + 1] - intervalTimes[i]);
                         }
                         averageSpeedFactor /= 100.0;
 
-                        for (int i = 0; i < 5; ++i) {
+                        for (int i = 0; i < intervalTimes.length - 1; ++i) {
                             speedDeviationSum += Math.abs(speedFactors[typ][i] - averageSpeedFactor) /
-                                    averageSpeedFactor * (proposedDepartTime[i + 1] - proposedDepartTime[i]);
+                                    averageSpeedFactor * (intervalTimes[i + 1] - intervalTimes[i]);
                         }
 
                         if (!arcArrivalTimeFunctions.containsKey(from)) {
@@ -253,7 +252,7 @@ public class InputData {
 
                         assert !arcArrivalTimeFunctions.get(from).containsKey(to);
                         arcArrivalTimeFunctions.get(from).put(to,
-                                new PiecewiseArrivalTimeFunction(proposedDepartTime, travelTimes[from][to], speedFactors[typ]));
+                                new PiecewiseArrivalTimeFunction(intervalTimes, travelTimes[from][to], speedFactors[typ]));
                         averageTravelTimes.get(from).put(to, averageSpeedFactor * travelTimes[from][to]);
 
                         ++nbArcs;
@@ -266,7 +265,7 @@ public class InputData {
 
     public InputData(boolean bigFile) throws FileNotFoundException {
         requests = null;
-        proposedDepartTime = null;
+        intervalTimes = null;
         endOfTheDay = 0.0;
         nbVehicles = 0;
         vehicleCapacity = 0.0;

@@ -8,4 +8,9 @@ public class ImmediateArrivalTimeFunction extends ArrivalTimeFunction {
     public double getDepartureTime(double arrivalTime) {
         return arrivalTime;
     }
+
+    @Override
+    public int getSize() {
+        return 0;
+    }
 }

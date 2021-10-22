@@ -15,7 +15,7 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         points = new ArrayList<>(stepTimes.length * 2 - 1);
         points.add(new double[] {0.0, getNeighborArrivalTime(baseTravelTime, 0, stepTimes, speedFactors)});
 
-        for (int i = 1; i < stepTimes.length; ++i) {
+        for (int i = 1; i < stepTimes.length - 1; ++i) {
             // Arrival at current step time
             double departureTime = getNeighborDepartureTime(baseTravelTime, i, stepTimes, speedFactors);
             if (DoubleComparator.greaterThan(departureTime, 0.0)) {
@@ -136,60 +136,58 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         return departureTime;
     }
 
-    private static double getNeighborArrivalTime(double baseTravelTime, int step,
-                                                 double[] stepTimes, double[] speedFactors) {
-        double relativeTimeTravelled = 0.0;
-        int nbCompleteDays = step / (stepTimes.length - 1);
-        int currentStep = step % (stepTimes.length - 1);
-
-        // Find the final step in the speed function
-        double distanceInCurrentStep = (stepTimes[currentStep + 1] - stepTimes[currentStep]) *
-                speedFactors[currentStep];
-        while(DoubleComparator.lessThan(relativeTimeTravelled + distanceInCurrentStep, baseTravelTime)){
-            relativeTimeTravelled += distanceInCurrentStep;
-
-            if(currentStep == stepTimes.length - 2){
-                currentStep = 0;
-                ++nbCompleteDays;
-            } else {
-                ++currentStep;
-            }
-
-            distanceInCurrentStep = (stepTimes[currentStep + 1] - stepTimes[currentStep]) *
-                    speedFactors[currentStep % speedFactors.length];
-        }
-
-        return stepTimes[currentStep] +
-                (baseTravelTime - relativeTimeTravelled) / speedFactors[currentStep] +
-                nbCompleteDays * stepTimes[stepTimes.length - 1];
+    @Override
+    public int getSize() {
+        return points.size() * Double.BYTES * 2;
     }
 
-    private static double getNeighborDepartureTime(double baseTravelTime, int step,
-                                                   double[] stepTimes, double[] speedFactors) {
-        double endOfTheDay = stepTimes[stepTimes.length - 1];
+    // Give the arrival time when departing at the start of the specified step
+    private static double getNeighborArrivalTime(double baseTravelTime, int step,
+                                                 double[] stepTimes, double[] speedFactors) {
+        // The relative time travelled is the distance travelled multiplied
+        // by the base travel time divided by the arc length
         double relativeTimeTravelled = 0.0;
-        int nbCompleteDays = 0;
         int currentStep = step;
 
-        // Find the final step in the speed function
-        double distanceInCurrentStep = (stepTimes[currentStep] - stepTimes[currentStep - 1]) *
-                speedFactors[currentStep - 1];
-        while(DoubleComparator.lessThan(relativeTimeTravelled + distanceInCurrentStep, baseTravelTime)){
+        // Find the arrival step in the speed function
+        // The speed of the last step is kept at the end of the day
+        // so stepTimes.length - 2 is the start of the last step
+        double distanceInCurrentStep =
+                (stepTimes[currentStep + 1] - stepTimes[currentStep]) * speedFactors[currentStep];
+        while (currentStep < stepTimes.length - 2 &&
+                DoubleComparator.lessThan(relativeTimeTravelled + distanceInCurrentStep, baseTravelTime)) {
             relativeTimeTravelled += distanceInCurrentStep;
+            ++currentStep;
 
-            if(currentStep == 1){
-                currentStep = stepTimes.length - 1;
-                ++nbCompleteDays;
-            } else {
-                --currentStep;
-            }
-
-            distanceInCurrentStep = (stepTimes[currentStep] - stepTimes[currentStep - 1]) *
-                    speedFactors[currentStep - 1];
+            distanceInCurrentStep = (stepTimes[currentStep + 1] - stepTimes[currentStep]) * speedFactors[currentStep];
         }
 
-        return stepTimes[currentStep] -
-                (baseTravelTime - relativeTimeTravelled) / speedFactors[currentStep - 1] -
-                nbCompleteDays * endOfTheDay;
+        return stepTimes[currentStep] + (baseTravelTime - relativeTimeTravelled) / speedFactors[currentStep];
+    }
+
+    // Give the departure time to arrive at the start of the specified step
+    private static double getNeighborDepartureTime(double baseTravelTime, int step,
+                                                   double[] stepTimes, double[] speedFactors) {
+        // The relative time travelled is the distance travelled multiplied
+        // by the base travel time divided by the arc length
+        double relativeTimeTravelled = 0.0;
+        int currentStep = step - 1;
+
+        // Find the departure step in the speed function
+        assert currentStep >= 0;
+        double distanceInCurrentStep =
+                (stepTimes[currentStep + 1] - stepTimes[currentStep]) * speedFactors[currentStep];
+        while(DoubleComparator.lessThan(relativeTimeTravelled + distanceInCurrentStep, baseTravelTime)){
+            relativeTimeTravelled += distanceInCurrentStep;
+            --currentStep;
+            if (currentStep < 0) {
+                // Any negative departure time will indicate the impossibility of this arrival time
+                return -1.0;
+            }
+
+            distanceInCurrentStep = (stepTimes[currentStep + 1] - stepTimes[currentStep]) * speedFactors[currentStep];
+        }
+
+        return stepTimes[currentStep + 1] - (baseTravelTime - relativeTimeTravelled) / speedFactors[currentStep];
     }
 }
