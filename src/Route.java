@@ -77,6 +77,10 @@ public class Route {
         return routeEnd.getCumulativeLateness();
     }
 
+    public double getOvertime() {
+        return routeEnd.getOvertime();
+    }
+
     public int getNbUnsealedStops() {
         // The route end does not count
         return Math.max(routeStops.size() - nbSealedStops - 1, 0);
@@ -319,5 +323,9 @@ public class Route {
 
     public boolean isInsertionPossible() {
         return nbSealedStops < routeStops.size();
+    }
+
+    public boolean isEmpty() {
+        return routeStops.size() == 2;
     }
 }

@@ -77,7 +77,7 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
 
         if (DoubleComparator.greaterOrEqual(departureTime, points.get(points.size() - 1)[0])) {
             // The function continues towards infinity with a slope of 1 after the last break point
-            return points.get(points.size() - 1)[1] + departureTime - points.get(points.size() - 1)[0];
+            return departureTime + points.get(points.size() - 1)[1] - points.get(points.size() - 1)[0];
         }
 
         int previousPoint = 0;
@@ -141,7 +141,7 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         return points.size() * Double.BYTES * 2;
     }
 
-    // Give the arrival time when departing at the start of the specified step
+    // Get the arrival time when departing at the start of the specified step
     private static double getNeighborArrivalTime(double baseTravelTime, int step,
                                                  double[] stepTimes, double[] speedFactors) {
         // The relative time travelled is the distance travelled multiplied
@@ -165,7 +165,7 @@ public class PiecewiseArrivalTimeFunction extends ArrivalTimeFunction {
         return stepTimes[currentStep] + (baseTravelTime - relativeTimeTravelled) / speedFactors[currentStep];
     }
 
-    // Give the departure time to arrive at the start of the specified step
+    // Get the departure time to arrive at the start of the specified step
     private static double getNeighborDepartureTime(double baseTravelTime, int step,
                                                    double[] stepTimes, double[] speedFactors) {
         // The relative time travelled is the distance travelled multiplied

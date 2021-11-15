@@ -7,6 +7,7 @@ public class Solution {
     private final int maxNbRoutes;
     private double travelTime;
     private double lateness;
+    private double overtime;
     private double cost;
 
     // routeIndexForNextInsertion is used when the last request removed had
@@ -22,6 +23,7 @@ public class Solution {
         this.maxNbRoutes = maxNbRoutes;
         travelTime = routes.get(0).getTravelTime();
         lateness = routes.get(0).getLateness();
+        overtime = routes.get(0).getOvertime();
         cost = routes.get(0).getCost();
 
         routeIndexForNextInsertion = -1;
@@ -36,6 +38,7 @@ public class Solution {
         maxNbRoutes = otherSolution.maxNbRoutes;
         travelTime = otherSolution.travelTime;
         lateness = otherSolution.lateness;
+        overtime = otherSolution.overtime;
         cost = otherSolution.cost;
 
         routeIndexForNextInsertion = otherSolution.routeIndexForNextInsertion;
@@ -76,6 +79,7 @@ public class Solution {
         {
             travelTime -= routes.get(routeIndex).getTravelTime();
             lateness -= routes.get(routeIndex).getLateness();
+            overtime -= routes.get(routeIndex).getOvertime();
             cost -= routes.get(routeIndex).getCost();
 
             routes.set(routeIndex, routeAfterInsertion);
@@ -83,6 +87,7 @@ public class Solution {
 
         travelTime += routeAfterInsertion.getTravelTime();
         lateness += routeAfterInsertion.getLateness();
+        overtime += routeAfterInsertion.getOvertime();
         cost += routeAfterInsertion.getCost();
     }
 
@@ -131,6 +136,7 @@ public class Solution {
         {
             travelTime -= routes.get(routeIndex).getTravelTime();
             lateness -= routes.get(routeIndex).getLateness();
+            overtime -= routes.get(routeIndex).getOvertime();
             cost -= routes.get(routeIndex).getCost();
 
             routes.set(routeIndex, bestRoute);
@@ -138,6 +144,7 @@ public class Solution {
 
         travelTime += bestRoute.getTravelTime();
         lateness += bestRoute.getLateness();
+        overtime += bestRoute.getOvertime();
         cost += bestRoute.getCost();
     }
 
@@ -198,6 +205,8 @@ public class Solution {
                     routes.get(bestRouteIndex).getTravelTime();
             lateness += newRoutesMatrix.get(bestRequestIndex).get(bestRouteIndex).getLateness() -
                     routes.get(bestRouteIndex).getLateness();
+            overtime += newRoutesMatrix.get(bestRequestIndex).get(bestRouteIndex).getOvertime() -
+                    routes.get(bestRouteIndex).getOvertime();
             cost += costIncreaseMatrix.get(bestRequestIndex).get(bestRouteIndex);
 
             boolean addRoute = bestRouteIndex == routes.size() - 1 && routes.size() < maxNbRoutes;
@@ -236,23 +245,45 @@ public class Solution {
         for (int i = 0; i < routes.size(); ++i) {
             travelTime -= routes.get(i).getTravelTime();
             lateness -= routes.get(i).getLateness();
+            overtime -= routes.get(i).getOvertime();
             cost -= routes.get(i).getCost();
 
             int nbRemoved = routes.get(i).removeRequest(request);
 
             travelTime += routes.get(i).getTravelTime();
             lateness += routes.get(i).getLateness();
+            overtime += routes.get(i).getOvertime();
             cost += routes.get(i).getCost();
 
             if (nbRemoved > 0) {
                 if (nbRemoved == 1) {
                     routeIndexForNextInsertion = i;
+                } else if (routes.get(i).isEmpty()) {
+                    // Only keep one empty route at the end of the list
+                    assert routes.get(i).getCost() == 0.0;
+                    Route emptyRoute = routes.remove(i);
+                    if (!routes.get(routes.size() - 1).isEmpty()) {
+                        routes.add(emptyRoute);
+                    }
                 }
+
                 return nbRemoved;
             }
         }
 
         return 0;
+    }
+
+    public double getTravelTime() {
+        return travelTime;
+    }
+
+    public double getLateness() {
+        return lateness;
+    }
+
+    public double getOvertime() {
+        return overtime;
     }
 
     public double getCost() {
@@ -284,6 +315,11 @@ public class Solution {
     }
 
     public int getNbRoutes() {
-        return routes.size();
+        int nbRoutes = routes.size();
+        if (routes.get(routes.size() - 1).isEmpty()) {
+            --nbRoutes;
+        }
+
+        return nbRoutes;
     }
 }

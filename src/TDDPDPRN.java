@@ -1,4 +1,5 @@
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -38,8 +39,8 @@ public class TDDPDPRN {
 
         long startTime = System.nanoTime();
 
-        double msMultiplier = 1000;
-        TabuSearch tabuSearch = new TabuSearch(10, 3.0 / 8.0,
+        double msMultiplier = 500;
+        TabuSearch tabuSearch = new TabuSearch(10.0, 3.0 / 8.0,
                 1.0 / 2.0, Integer.MAX_VALUE, false);
         DynamicProblemSolver dynamicProblemSolver = new DynamicProblemSolver(
                 5.0, 10.0, msMultiplier, false, true);
@@ -58,15 +59,71 @@ public class TDDPDPRN {
                             InputData inputData;
                             try {
                                 inputData = new InputData(arrayNbNodes[nbNodeIndex], arrayNbClients[nbClientsIndex],
-                                        corr, index, timeWindowType, instanceRandom, 0.5, 1.5);
+                                        corr, index, timeWindowType, instanceRandom, 0.5, 0.25);
                             } catch (FileNotFoundException e) {
                                 // Not all parameter combinations exist
                                 continue;
                             }
                             inputDataReadTime += (System.nanoTime() - time) / 1000000000.0;
 
+                            time = System.nanoTime();
+                            ArrivalTimeFunction[][] arrivalTimeFunctions =
+                                    DominantShortestPath.getDominantShortestPaths(inputData,
+                                            false, inputData.intervalTimes);
+                            double dspTime = (System.nanoTime() - time) / 1000000000.0;
+
+//                            int totalNbArcs = 0;
+//                            int nbPaths = 0;
+//                            int maxNbArcs = 0;
+//                            int size = 0;
+//                            double maxTravelTime = 0.0;
+//                            double maxTravelTimeFromDepot = 0.0;
+//                            for (int i = 0; i < inputData.nbNodes; ++i) {
+//                                for (int j = 0; j < inputData.nbNodes; ++j) {
+//                                    if (i != j) {
+//                                        for (ArrayList<Integer> path :
+//                                                ((DominantShortestPath) arrivalTimeFunctions[i][j]).paths) {
+//                                            int nbArcs = path.size();
+//                                            totalNbArcs += nbArcs;
+//                                            ++nbPaths;
+//                                            if (nbArcs > maxNbArcs) {
+//                                                maxNbArcs = nbArcs;
+//                                            }
+//                                        }
+//
+//                                        double travelTime = arrivalTimeFunctions[i][j].getArrivalTime(0.0);
+//                                        if (travelTime > maxTravelTime) {
+//                                            maxTravelTime = travelTime;
+//                                        }
+//                                        if (i == 0 && travelTime > maxTravelTimeFromDepot) {
+//                                            maxTravelTimeFromDepot = travelTime;
+//                                        }
+//
+//                                        size += arrivalTimeFunctions[i][j].getSize();
+//                                    }
+//                                }
+//                            }
+                            //System.out.println(String.format("%f\t%f", maxTravelTime, maxTravelTimeFromDepot));
+//                            System.out.println(String.format("%d\t%f\t%d\t%f\t%f", arrayNbNodes[nbNodeIndex],
+//                                    (double) totalNbArcs / nbPaths, maxNbArcs, dspTime, (double) size / 1024 / 1024));
+
+//                            double maxTravelTime = 0.0;
+//                            for (Request request : inputData.requests) {
+//                                double travelTime = arrivalTimeFunctions[0][request.pickupNode].getArrivalTime(0.0);
+//                                if (travelTime > maxTravelTime) {
+//                                    maxTravelTime = travelTime;
+//                                }
+//                                travelTime = arrivalTimeFunctions[0][request.pickupNode].getArrivalTime(0.0);
+//                                if (travelTime > maxTravelTime) {
+//                                    maxTravelTime = travelTime;
+//                                }
+//                            }
+//                            System.out.println(maxTravelTime);
+
                             Solution solution = dynamicProblemSolver.apply(inputData, instanceRandom, tabuSearch);
-                            System.out.println(solution.getCost());
+                            System.out.println(String.format("%f\t%f\t%f\t%f\t%d",
+                                    solution.getCost(), solution.getTravelTime(), solution.getLateness(),
+                                    solution.getOvertime(), solution.getNbRoutes()));
 
                             for (Request request : inputData.requests) {
                                 assert solution.getNbStopsForRequest(request) == 2;
@@ -74,28 +131,25 @@ public class TDDPDPRN {
 
 //                            ArrivalTimeFunction[][] atf1 =
 //                                    DominantShortestPath.getDominantShortestPaths(inputData, false,
-//                                            new double[] {inputData.proposedDepartTime[0]});
+//                                            inputData.intervalTimes);
 //                            ArrivalTimeFunction[][] atf2 =
-//                                    DominantShortestPath.getDominantShortestPaths(inputData, false,
-//                                            inputData.proposedDepartTime);
+//                                    DominantShortestPath.getDominantShortestPaths(inputData, true,
+//                                            new double[] {inputData.intervalTimes[0]});
 //
 //                            double travelTimeRatio = 0.0;
 //                            int nbValues = 0;
 //                            for (int i = 0; i < inputData.nbNodes; ++i) {
 //                                for (int j = 0; j < inputData.nbNodes; ++j) {
 //                                    if (i != j) {
-//                                        if (((DominantShortestPath) atf2[i][j]).paths.size() > 1) {
-//                                            for (double departureTime = 0.0;
-//                                                 departureTime <= inputData.endOfTheDay;
-//                                                 ++departureTime) {
-//                                                double travelTime1 =
-//                                                        atf1[i][j].getArrivalTime(departureTime) - departureTime;
-//                                                double travelTime2 =
-//                                                        atf2[i][j].getArrivalTime(departureTime) - departureTime;
-//                                                //assert DoubleComparator.greaterOrEqual(travelTime1, travelTime2);
-//                                                travelTimeRatio += travelTime1 / travelTime2;
-//                                                ++nbValues;
-//                                            }
+//                                        for (double departureTime = 0.0;
+//                                             departureTime <= inputData.endOfTheDay;
+//                                             ++departureTime) {
+//                                            double travelTime1 =
+//                                                    atf1[i][j].getArrivalTime(departureTime) - departureTime;
+//                                            double travelTime2 =
+//                                                    atf2[i][j].getArrivalTime(departureTime) - departureTime;
+//                                            travelTimeRatio += travelTime1 / travelTime2;
+//                                            ++nbValues;
 //                                        }
 //                                    }
 //                                }
