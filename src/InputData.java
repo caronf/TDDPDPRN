@@ -47,13 +47,15 @@ public class InputData {
         nbVehicles = (int) (nbRequests * vehiclesPerRequest);
 
         double maxArrivalTime = 0.0;
+        endOfTheDay = 100.0;
+        double instanceEndOfTheDay;
         if (fileExists) {
             line = sc.nextLine().trim().split("\\s+");
             vehicleCapacity = Double.parseDouble(line[1]);
 
             line = sc.nextLine().trim().split("\\s+");
             assert Integer.parseInt(line[0]) == 0;
-            endOfTheDay = Double.parseDouble(line[5]);
+            instanceEndOfTheDay = Double.parseDouble(line[5]);
 
             requests = new ArrayList<>(nbRequests);
             ArrayList<Integer> staticRequestIndices = new ArrayList<>(nbRequests);
@@ -72,15 +74,15 @@ public class InputData {
 
                 int node1 = Integer.parseInt(line[0]);
                 double load = Double.parseDouble(line[3]);
-                double timeWindowLowerBound1 = Double.parseDouble(line[4]);
-                double timeWindowUpperBound1 = Double.parseDouble(line[5]);
+                double timeWindowLowerBound1 = Double.parseDouble(line[4]) / instanceEndOfTheDay * endOfTheDay;
+                double timeWindowUpperBound1 = Double.parseDouble(line[5]) / instanceEndOfTheDay * endOfTheDay;
 
                 line = sc.nextLine().trim().split("\\s+");
 
                 int node2 = Integer.parseInt(line[0]);
                 load += Double.parseDouble(line[3]);
-                double timeWindowLowerBound2 = Double.parseDouble(line[4]);
-                double timeWindowUpperBound2 = Double.parseDouble(line[5]);
+                double timeWindowLowerBound2 = Double.parseDouble(line[4]) / instanceEndOfTheDay * endOfTheDay;
+                double timeWindowUpperBound2 = Double.parseDouble(line[5]) / instanceEndOfTheDay * endOfTheDay;
 
                 assert timeWindowLowerBound1 < endOfTheDay &&
                         timeWindowLowerBound2 < endOfTheDay &&
@@ -112,49 +114,53 @@ public class InputData {
             sc.close();
         } else {
             vehicleCapacity = 200.0;
-            endOfTheDay = 100.0;
+            instanceEndOfTheDay = 250.0;
+            double maxTimeWindowLowerBound = 0.85 * endOfTheDay;
+            double minTimeWindowLength = tw.equals("NTW") ? 0.03 * endOfTheDay : 0.08 * endOfTheDay;
+            double maxAdditionalTimeWindowLength = tw.equals("NTW") ? 0.01 * endOfTheDay : 0.07 * endOfTheDay;
             requests = new ArrayList<>(nbRequests);
             for (int i = 0; i < nbRequests; ++i) {
                 double load = random.nextDouble() * 40.0 + 20.0;
 
                 int node1 = random.nextInt(nbNodes);
                 int node2 = random.nextInt(nbNodes);
-                double timeWindowLowerBound1 = random.nextDouble() * 85.0;
-                double timeWindowLowerBound2 = random.nextDouble() * 85.0;
-                double timeWindowUpperBound1;
-                double timeWindowUpperBound2;
-                if (tw.equals("NTW")) {
-                    timeWindowUpperBound1 = timeWindowLowerBound1 + 3.0 + random.nextDouble();
-                    timeWindowUpperBound2 = timeWindowLowerBound2 + 3.0 + random.nextDouble();
-                } else {
-                    assert tw.equals("WTW");
-                    timeWindowUpperBound1 = timeWindowLowerBound1 + 8.0 + random.nextDouble() * 7.0;
-                    timeWindowUpperBound2 = timeWindowLowerBound2 + 8.0 + random.nextDouble() * 7.0;
-                }
+                double timeWindowLowerBound1 = random.nextDouble() * maxTimeWindowLowerBound;
+                double timeWindowLowerBound2 = random.nextDouble() * maxTimeWindowLowerBound;
+                double timeWindowUpperBound1 = timeWindowLowerBound1 + minTimeWindowLength +
+                        random.nextDouble() * maxAdditionalTimeWindowLength;
+                double timeWindowUpperBound2 = timeWindowLowerBound2 + minTimeWindowLength +
+                        random.nextDouble() * maxAdditionalTimeWindowLength;
 
                 // Select the earliest time window end (or start in case of equality) as the pickup point
                 double arrivalTime;
                 if (timeWindowUpperBound1 < timeWindowUpperBound2 ||
                         timeWindowUpperBound1 == timeWindowUpperBound2 &&
                                 timeWindowLowerBound1 <= timeWindowLowerBound2) {
-                    arrivalTime = i < Math.round(nbRequests * dynamismRatio) ?
-                            random.nextDouble() * timeWindowLowerBound1 : 0.0;
+                    arrivalTime = random.nextDouble() * timeWindowLowerBound1;
                     requests.add(new Request(node1, node2, load,
                             timeWindowLowerBound1, timeWindowUpperBound1, 0.0,
-                            timeWindowLowerBound2, timeWindowUpperBound2, 0.0, arrivalTime));
+                            timeWindowLowerBound2, timeWindowUpperBound2, 0.0,
+                            i >= Math.round(nbRequests * dynamismRatio) ? 0.0 : arrivalTime));
                 } else {
-                    arrivalTime = i < Math.round(nbRequests * dynamismRatio) ?
-                            random.nextDouble() * timeWindowLowerBound2 : 0.0;
+                    arrivalTime = random.nextDouble() * timeWindowLowerBound2;
                     requests.add(new Request(node2, node1, load,
                             timeWindowLowerBound2, timeWindowUpperBound2, 0.0,
-                            timeWindowLowerBound1, timeWindowUpperBound1, 0.0, arrivalTime));
+                            timeWindowLowerBound1, timeWindowUpperBound1, 0.0,
+                            i >= Math.round(nbRequests * dynamismRatio) ? 0.0 : arrivalTime));
                 }
 
-                maxArrivalTime = Math.max(maxArrivalTime, arrivalTime);
+                if (i < Math.round(nbRequests * dynamismRatio)) {
+                    maxArrivalTime = Math.max(maxArrivalTime, arrivalTime);
+                }
             }
         }
 
         returnTime = (maxArrivalTime + endOfTheDay) / 2.0;
+        for (int i = 0; i < travelTimes.length; ++i) {
+            for (int j = 0; j < travelTimes[i].length; ++j) {
+                travelTimes[i][j] = travelTimes[i][j] / instanceEndOfTheDay * endOfTheDay;
+            }
+        }
 
         fileExists = true;
         try {
@@ -228,7 +234,8 @@ public class InputData {
                     {1.17, 0.67, 1.33, 0.83, 1},
                     {1, 0.33, 0.67, 0.5, 0.83}
             };
-            intervalTimes = new double[] {0.0, 20.0, 30.0, 70.0, 80.0, 100.0};
+            intervalTimes = new double[] {0.0, 0.2 * endOfTheDay, 0.3 * endOfTheDay,
+                    0.7 * endOfTheDay, 0.8 * endOfTheDay, endOfTheDay};
 
             for (int from = 0; from < nbNodes; ++from) {
                 for (int to = 0; to < nbNodes; ++to) {
@@ -261,121 +268,5 @@ public class InputData {
             }
             averageSpeedDeviation = speedDeviationSum / 100.0 / nbArcs;
         }
-    }
-
-    public InputData(boolean bigFile) throws FileNotFoundException {
-        requests = null;
-        intervalTimes = null;
-        endOfTheDay = 0.0;
-        nbVehicles = 0;
-        vehicleCapacity = 0.0;
-        returnTime = 0.0;
-
-        String filename;
-        String separator;
-        int yearIndex;
-        int trailingCells;
-        if (bigFile) {
-            filename = "Maha_Gmira_data/filtered_more5.csv";
-            separator = ";";
-            yearIndex = 0;
-            trailingCells = 0;
-        } else {
-            filename = "Maha_Gmira_data/df_vector_cl.csv";
-            separator = ",";
-            yearIndex = 1;
-            trailingCells = 2;
-        }
-
-        double maxDeviation = 0.0;
-        int maxDeviationSegment = -1;
-        double speedDeviationSum = 0.0;
-        nbNodes = 51317;
-        //HashMap<Integer, Integer> nodes = new HashMap<>(nbNodes);
-        HashSet<Integer> toNodes = new HashSet<>();
-        arcArrivalTimeFunctions = new HashMap<>();
-        averageTravelTimes = new HashMap<>();
-        Scanner sc = new Scanner(new File(filename));
-        int nbLines = 0;
-        sc.nextLine();
-        while(sc.hasNextLine()) {
-            String[] line = sc.nextLine().split(separator);
-            //if (Integer.parseInt(line[yearIndex]) == 2014 &&
-            //Integer.parseInt(line[yearIndex + 1]) == 1 && Integer.parseInt(line[yearIndex + 2]) == 1) {
-            int i = Integer.parseInt(line[yearIndex + 6]);
-            int j = Integer.parseInt(line[yearIndex + 7]);
-
-            if (!arcArrivalTimeFunctions.containsKey(i)) {
-                arcArrivalTimeFunctions.put(i, new HashMap<>());
-            }
-
-            if (!arcArrivalTimeFunctions.get(i).containsKey(j)) {
-                arcArrivalTimeFunctions.get(i).put(j, new PiecewiseArrivalTimeFunction(
-                        new double[]{0.0, 100.0}, Double.parseDouble(line[yearIndex + 8]), new double[]{1.0}));
-                //toNodes.add(j);
-            }
-
-            if (!arcArrivalTimeFunctions.containsKey(j)) {
-                arcArrivalTimeFunctions.put(j, new HashMap<>());
-            }
-
-            if (!arcArrivalTimeFunctions.get(j).containsKey(i)) {
-                arcArrivalTimeFunctions.get(j).put(i, new PiecewiseArrivalTimeFunction(
-                        new double[]{0.0, 100.0}, Double.parseDouble(line[yearIndex + 8]), new double[]{1.0}));
-            }
-
-            double averageSpeed = 0.0;
-            for (int k = yearIndex + 8; k < line.length - trailingCells; ++k) {
-                averageSpeed += Double.parseDouble(line[k]);
-            }
-            averageSpeed /= line.length - trailingCells - yearIndex - 8;
-
-            for (int k = yearIndex + 8; k < line.length - trailingCells; ++k) {
-                speedDeviationSum += Math.abs(Double.parseDouble(line[k]) - averageSpeed) / averageSpeed /
-                        (line.length - trailingCells - yearIndex - 8);
-            }
-
-            nbLines++;
-            //}
-        }
-
-        sc.close();
-        averageSpeedDeviation = speedDeviationSum / nbLines;
-
-//		HashSet<Integer> nodesOnlyFrom = new HashSet<>(arcArrivalTimeFunctions2.keySet());
-//		nodesOnlyFrom.removeAll(toNodes);
-//
-//		HashSet<Integer> nodesOnlyTo = new HashSet<>(toNodes);
-//		nodesOnlyTo.removeAll(arcArrivalTimeFunctions2.keySet());
-
-//		assert nodes.size() == nbNodes;
-//
-//		for (int i = 0; i < nbNodes; i++) {
-//			assert arcArrivalTimeFunctions2.containsKey(i);
-//			assert arcArrivalTimeFunctions2.get(i).size() > 0;
-//		}
-
-//		HashSet<Integer> visitedNodes = new HashSet<>();
-//		Queue<Integer> nodesToVisit = new ArrayDeque<>();
-//		for (int i : arcArrivalTimeFunctions2.keySet()) {
-//			nodesToVisit.add(i);
-//			break;
-//		}
-//		nodesToVisit.add(164839);
-
-//		while (!nodesToVisit.isEmpty()) {
-//			int i = nodesToVisit.remove();
-//			if (!visitedNodes.contains(i)) {
-//				visitedNodes.add(i);
-//				if (arcArrivalTimeFunctions2.containsKey(i)) {
-//					nodesToVisit.addAll(arcArrivalTimeFunctions2.get(i).keySet());
-//				}
-//			}
-//		}
-//
-//		HashSet<Integer> unvisitedNodes = new HashSet<>(arcArrivalTimeFunctions2.keySet());
-//		unvisitedNodes.removeAll(visitedNodes);
-
-        return;
     }
 }
